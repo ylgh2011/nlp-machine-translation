@@ -1,0 +1,7 @@
+*.o
+*.~
+*.ignore
+*.pyc
+*.DS_Store
+*.exe
+
