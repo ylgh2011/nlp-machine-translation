@@ -4,11 +4,18 @@ import sys
 import models
 import copy
 from collections import namedtuple
+from models import getDotProduct
 
 optparser = optparse.OptionParser()
-optparser.add_option("-i", "--input", dest="input", default="data/input", help="File containing sentences to translate (default=data/input)")
-optparser.add_option("-t", "--translation-model", dest="tm", default="data/tm", help="File containing translation model (default=data/tm)")
-optparser.add_option("-l", "--language-model", dest="lm", default="data/lm", help="File containing ARPA-format language model (default=data/lm)")
+optparser.add_option("-i", "--input", dest="input", default="/usr/shared/CMPT/nlp-class/project/dev/all.cn-en.cn", help="File containing sentences to translate (default=data/input)")
+
+# optparser.add_option("-t", "--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/toy/phrase-table/phrase_table.out", help="File containing translation model (default=data/tm)")
+# optparser.add_option("-t", "--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/small/phrase-table/moses/phrase-table.gz", help="File containing translation model (default=data/tm)")
+optparser.add_option("-t", "--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/dev-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
+
+# optparser.add_option("-l", "--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz", help="File containing ARPA-format language model (default=data/lm)")
+optparser.add_option("-l", "--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.tiny.3g.arpa", help="File containing ARPA-format language model (default=data/lm)")
+
 optparser.add_option("-n", "--num_sentences", dest="num_sents", default=sys.maxint, type="int", help="Number of sentences to decode (default=no limit)")
 optparser.add_option("-k", "--translations-per-phrase", dest="k", default=20, type="int", help="Limit on number of translations to consider per phrase (default=1)")
 optparser.add_option("-s", "--heap-size", dest="s", default=1000, type="int", help="Maximum heap size (default=1)")
@@ -48,7 +55,7 @@ def main():
     # tm should translate unknown words as-is with probability 1
     for word in set(sum(french,())):
         if (word,) not in tm:
-            tm[(word,)] = [models.phrase(word, 0.0)]
+            tm[(word,)] = [models.phrase(word, [0.0, 0.0, 0.0, 0.0])]
 
     total_prob = 0
     if opts.mute == 0:
@@ -77,7 +84,8 @@ def main():
                                         lm_prob += prob
                                     lm_prob += lm.end(lm_state) if k == len(f) else 0.0
                                     coverage = h.coverage | bitmap(range(j, k))
-                                    logprob = h.logprob + opts.alpha*lm_prob + opts.beta*phrase.logprob # + eta*abs(h.end + 1 - j)
+                                    # print phrase
+                                    logprob = h.logprob + opts.alpha*lm_prob + opts.beta*getDotProduct(phrase.several_logprob) # + eta*abs(h.end + 1 - j)
 
                                     new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase)
 
