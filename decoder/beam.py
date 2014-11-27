@@ -25,12 +25,15 @@ optparser.add_option("-e", "--eta", dest="eta", default=-2.0, type="float",  hel
 optparser.add_option("-a", "--alpha", dest="alpha", default=1.0, type="float", help="weight for language model")
 optparser.add_option("-b", "--beta", dest="beta", default=1.0, type="float", help="weight for translation model")
 optparser.add_option("-m", "--mute", dest="mute", default=0, type="int", help="mute the output")
+
+optparser.add_option("--nbest", dest="nbest", default=100, type="int", help="print out nbest results")
+
 opts = optparser.parse_args()[0]
 tm = models.TM(opts.tm, opts.k, opts.mute)
 lm = models.LM(opts.lm, opts.mute)
 french = [tuple(line.strip().split()) for line in open(opts.input).readlines()[:opts.num_sents]]
 bound_width = float(opts.bwidth)
-hypothesis = namedtuple("hypothesis", "lm_state, logprob, coverage, end, predecessor, phrase")
+hypothesis = namedtuple("hypothesis", "lm_state, logprob, coverage, end, predecessor, phrase, distortionPenalty")
 
 def bitmap(sequence):
     """ Generate a coverage bitmap for a sequence of indexes """
@@ -85,9 +88,9 @@ def main():
                                     lm_prob += lm.end(lm_state) if k == len(f) else 0.0
                                     coverage = h.coverage | bitmap(range(j, k))
                                     # print phrase
-                                    logprob = h.logprob + opts.alpha*lm_prob + opts.beta*getDotProduct(phrase.several_logprob) # + eta*abs(h.end + 1 - j)
+                                    logprob = h.logprob + opts.alpha*lm_prob + opts.beta*getDotProduct(phrase.several_logprob) + eta*abs(h.end + 1 - j)
 
-                                    new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase)
+                                    new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase, abs(h.end + 1 - j))
 
                                     # add to heap
                                     num = onbits(coverage)
@@ -95,63 +98,105 @@ def main():
                                             heaps[num][lm_state, coverage, k] = new_hypothesis
 
 
-        winner = max(heaps[-1].itervalues(), key=lambda h: h.logprob)
-        eng_list = ["<s>"]
-        def get_list(h, output_list):
-            if h.predecessor is not None:
-                get_list(h.predecessor, output_list)
-                output_list.append(h.phrase.english)
-        def get_prob(test_list):
+        winners = sorted(heaps[-1].itervalues(), key=lambda h: h.logprob)[0:opts.nbest]
+        
+        def get_lm_logprob(test_list):
             stance = []
             for i in test_list:
                 stance += (i.split())
             stance = tuple(stance)
             lm_state = (stance[0],)
             score = 0.0
-            for word in stance[1:]:
+            for word in stance:
                 (lm_state, word_score) = lm.score(lm_state, word)
                 score += word_score
             return score
-        get_list(winner, eng_list)
-        eng_list.append("</s>")
+        def get_list_and_features(h):
+            lst = [];
+            features[6] = [0, 0, 0, 0, 0, 0]
+            current_h = h;
+            while current_h is not None:
+                lst.append(current_h.phrase.english);
+                features[1] += current_h.phrase.distortionPenalty
+                features[2] += current_h.phrase.english.several_logprob[0]
+                features[3] += current_h.phrase.english.several_logprob[1]
+                features[4] += current_h.phrase.english.several_logprob[2]
+                features[5] += current_h.phrase.english.several_logprob[3]
+                current_h = current_h.predecessor
+            lst = reversed(lst)
+            features[0] = get_lm_logprob(lst)
+            return (lst, features)
 
-        if opts.mute == 0:
-            sys.stderr.write("Start local search ...\n")
 
-        while True:
-            best_list = copy.deepcopy(eng_list)
+
+        for win in winners:
+            print idx,
+            print " ||| ",
+            (lst, features) = get_list_and_features(win)
+            for word in lst:
+                print word,
+            print " ||| ",
+            for fea in features:
+                print fea,
+            print
+
+
+        # eng_list = ["<s>"]
+        # def get_list(h, output_list):
+        #     if h.predecessor is not None:
+        #         get_list(h.predecessor, output_list)
+        #         output_list.append(h.phrase.english)
+        # def get_prob(test_list):
+        #     stance = []
+        #     for i in test_list:
+        #         stance += (i.split())
+        #     stance = tuple(stance)
+        #     lm_state = (stance[0],)
+        #     score = 0.0
+        #     for word in stance[1:]:
+        #         (lm_state, word_score) = lm.score(lm_state, word)
+        #         score += word_score
+        #     return score
+        # get_list(winner, eng_list)
+        # eng_list.append("</s>")
+
+        # if opts.mute == 0:
+        #     sys.stderr.write("Start local search ...\n")
+
+        # while True:
+        #     best_list = copy.deepcopy(eng_list)
             
-            # insert
-            for i in range(1,len(eng_list)-1):
-                for j in range(1, i):
-                    now_list = copy.deepcopy(eng_list)
-                    now_list.pop(i)
-                    now_list.insert(j, eng_list[i])
-                    if get_prob(now_list) > get_prob(best_list):
-                        best_list = now_list
+        #     # insert
+        #     for i in range(1,len(eng_list)-1):
+        #         for j in range(1, i):
+        #             now_list = copy.deepcopy(eng_list)
+        #             now_list.pop(i)
+        #             now_list.insert(j, eng_list[i])
+        #             if get_prob(now_list) > get_prob(best_list):
+        #                 best_list = now_list
 
-                for j in range(i+2, len(eng_list)-1):
-                    now_list = copy.deepcopy(eng_list)
-                    now_list.insert(j, eng_list[i])
-                    now_list.pop(i)
-                    if get_prob(now_list) > get_prob(best_list):
-                        best_list = now_list
-            # swap
-            for i in range(1,len(eng_list)-2):
-                for j in range(i+1,len(eng_list)-1):
-                    now_list = copy.deepcopy(eng_list)
-                    now_list[i], now_list[j] = now_list[j], now_list[i]
-                    if get_prob(now_list) > get_prob(best_list):
-                        best_list = now_list
+        #         for j in range(i+2, len(eng_list)-1):
+        #             now_list = copy.deepcopy(eng_list)
+        #             now_list.insert(j, eng_list[i])
+        #             now_list.pop(i)
+        #             if get_prob(now_list) > get_prob(best_list):
+        #                 best_list = now_list
+        #     # swap
+        #     for i in range(1,len(eng_list)-2):
+        #         for j in range(i+1,len(eng_list)-1):
+        #             now_list = copy.deepcopy(eng_list)
+        #             now_list[i], now_list[j] = now_list[j], now_list[i]
+        #             if get_prob(now_list) > get_prob(best_list):
+        #                 best_list = now_list
             
-            if get_prob(best_list) == get_prob(eng_list):
-                break
-            else:
-                eng_list = best_list
+        #     if get_prob(best_list) == get_prob(eng_list):
+        #         break
+        #     else:
+        #         eng_list = best_list
 
-        for i in eng_list[1:-1]:
-            print i,
-        print
+        # for i in eng_list[1:-1]:
+        #     print i,
+        # print
 
         if opts.mute == 0:
             sys.stderr.write("#{0}:{2} - {1}\n".format(idx, " ".join(eng_list[1:-1]) , get_prob(eng_list)))
