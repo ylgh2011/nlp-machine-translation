@@ -19,9 +19,9 @@ optparser.add_option("-l", "--language-model", dest="lm", default="/usr/shared/C
 optparser.add_option("-n", "--num_sentences", dest="num_sents", default=sys.maxint, type="int", help="Number of sentences to decode (default=no limit)")
 optparser.add_option("-k", "--translations-per-phrase", dest="k", default=20, type="int", help="Limit on number of translations to consider per phrase (default=1)")
 optparser.add_option("-s", "--heap-size", dest="s", default=1000, type="int", help="Maximum heap size (default=1)")
-optparser.add_option("-d", "--disorder", dest="disord", default=3, type="int", help="Disorder limit (default=6)")
+optparser.add_option("-d", "--disorder", dest="disord", default=5, type="int", help="Disorder limit (default=6)")
 optparser.add_option("-w", "--beam width", dest="bwidth", default=1.0,  help="beamwidth")
-optparser.add_option("-e", "--eta", dest="eta", default=-2.0, type="float",  help="distortion penalty parameter variable")
+optparser.add_option("-e", "--eta", dest="eta", default=-1.0, type="float",  help="distortion penalty parameter variable")
 optparser.add_option("-a", "--alpha", dest="alpha", default=1.0, type="float", help="weight for language model")
 optparser.add_option("-b", "--beta", dest="beta", default=1.0, type="float", help="weight for translation model")
 optparser.add_option("-m", "--mute", dest="mute", default=0, type="int", help="mute the output")
@@ -64,7 +64,7 @@ def main():
     if opts.mute == 0:
         sys.stderr.write("Decoding %s...\n" % (opts.input,))
     for idx,f in enumerate(french):
-        initial_hypothesis = hypothesis(lm.begin(), 0.0, 0, 0, None, None)
+        initial_hypothesis = hypothesis(lm.begin(), 0.0, 0, 0, None, None, None)
         heaps = [{} for _ in f] + [{}]
         heaps[0][lm.begin(), 0, 0] = initial_hypothesis
         for i, heap in enumerate(heaps[:-1]):
@@ -88,7 +88,7 @@ def main():
                                     lm_prob += lm.end(lm_state) if k == len(f) else 0.0
                                     coverage = h.coverage | bitmap(range(j, k))
                                     # print phrase
-                                    logprob = h.logprob + opts.alpha*lm_prob + opts.beta*getDotProduct(phrase.several_logprob) + eta*abs(h.end + 1 - j)
+                                    logprob = h.logprob + opts.alpha*lm_prob + opts.beta*getDotProduct(phrase.several_logprob) + opts.eta*abs(h.end + 1 - j)
 
                                     new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase, abs(h.end + 1 - j))
 
@@ -113,17 +113,18 @@ def main():
             return score
         def get_list_and_features(h):
             lst = [];
-            features[6] = [0, 0, 0, 0, 0, 0]
+            features = [0, 0, 0, 0, 0, 0]
             current_h = h;
-            while current_h is not None:
+            while current_h.phrase is not None:
+                # print current_h
                 lst.append(current_h.phrase.english);
-                features[1] += current_h.phrase.distortionPenalty
-                features[2] += current_h.phrase.english.several_logprob[0]
-                features[3] += current_h.phrase.english.several_logprob[1]
-                features[4] += current_h.phrase.english.several_logprob[2]
-                features[5] += current_h.phrase.english.several_logprob[3]
+                features[1] += current_h.distortionPenalty
+                features[2] += current_h.phrase.several_logprob[0]
+                features[3] += current_h.phrase.several_logprob[1]
+                features[4] += current_h.phrase.several_logprob[2]
+                features[5] += current_h.phrase.several_logprob[3]
                 current_h = current_h.predecessor
-            lst = reversed(lst)
+            lst.reverse()
             features[0] = get_lm_logprob(lst)
             return (lst, features)
 
@@ -131,11 +132,11 @@ def main():
 
         for win in winners:
             print idx,
-            print " ||| ",
+            print "|||",
             (lst, features) = get_list_and_features(win)
             for word in lst:
                 print word,
-            print " ||| ",
+            print "|||",
             for fea in features:
                 print fea,
             print
@@ -198,8 +199,8 @@ def main():
         #     print i,
         # print
 
-        if opts.mute == 0:
-            sys.stderr.write("#{0}:{2} - {1}\n".format(idx, " ".join(eng_list[1:-1]) , get_prob(eng_list)))
+        # if opts.mute == 0:
+        #    sys.stderr.write("#{0}:{2} - {1}\n".format(idx, " ".join(eng_list[1:-1]) , get_prob(eng_list)))
 
 if __name__ == "__main__":
     main()

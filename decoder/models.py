@@ -2,7 +2,7 @@
 # Simple translation model and language model data structures
 import sys
 import gzip
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from math import log
 
 # A translation model is a dictionary where keys are tuples of French words
@@ -49,11 +49,12 @@ def TM(filename, k, mute=1):
 #   logprob += word_logprob
 # logprob += lm.end(lm_state) # transition to </s>, can also use lm.score(lm_state, "</s>")[1]
 ngram_stats = namedtuple("ngram_stats", "logprob, backoff")
+
 class LM:
     def __init__(self, filename, mute=1):
         if mute == 0:
             sys.stderr.write("Reading language model from %s...\n" % (filename,))
-        self.table = {}
+        self.table = defaultdict(lambda: ngram_stats(0, 0))
         fp = gzip.open(filename) if filename[-3:] == '.gz' else open(filename)
         for line in fp:
             entry = line.strip().split("\t")
@@ -71,6 +72,7 @@ class LM:
             if ngram in self.table:
                 return (ngram[-2:], score + self.table[ngram].logprob)
             else: #backoff
+                # print ngram[:-1]
                 score += self.table[ngram[:-1]].backoff if len(ngram) > 1 else 0.0 
                 ngram = ngram[1:]
         return ((), score + self.table[("<unk>",)].logprob)
