@@ -6,34 +6,13 @@ import copy
 from collections import namedtuple
 from models import getDotProduct
 
-optparser = optparse.OptionParser()
-optparser.add_option("-i", "--input", dest="input", default="/usr/shared/CMPT/nlp-class/project/dev/all.cn-en.cn", help="File containing sentences to translate (default=data/input)")
-
-# optparser.add_option("-t", "--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/toy/phrase-table/phrase_table.out", help="File containing translation model (default=data/tm)")
-# optparser.add_option("-t", "--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/small/phrase-table/moses/phrase-table.gz", help="File containing translation model (default=data/tm)")
-optparser.add_option("-t", "--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/dev-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
-
-# optparser.add_option("-l", "--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz", help="File containing ARPA-format language model (default=data/lm)")
-optparser.add_option("-l", "--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.tiny.3g.arpa", help="File containing ARPA-format language model (default=data/lm)")
-
-optparser.add_option("-n", "--num_sentences", dest="num_sents", default=sys.maxint, type="int", help="Number of sentences to decode (default=no limit)")
-optparser.add_option("-k", "--translations-per-phrase", dest="k", default=20, type="int", help="Limit on number of translations to consider per phrase (default=1)")
-optparser.add_option("-s", "--heap-size", dest="s", default=1000, type="int", help="Maximum heap size (default=1)")
-optparser.add_option("-d", "--disorder", dest="disord", default=5, type="int", help="Disorder limit (default=6)")
-optparser.add_option("-w", "--beam width", dest="bwidth", default=1.0,  help="beamwidth")
-optparser.add_option("-e", "--eta", dest="eta", default=-1.0, type="float",  help="distortion penalty parameter variable")
-optparser.add_option("-a", "--alpha", dest="alpha", default=1.0, type="float", help="weight for language model")
-optparser.add_option("-b", "--beta", dest="beta", default=1.0, type="float", help="weight for translation model")
-optparser.add_option("-m", "--mute", dest="mute", default=0, type="int", help="mute the output")
-
-optparser.add_option("--nbest", dest="nbest", default=100, type="int", help="print out nbest results")
-
-opts = optparser.parse_args()[0]
-tm = models.TM(opts.tm, opts.k, opts.mute)
-lm = models.LM(opts.lm, opts.mute)
-french = [tuple(line.strip().split()) for line in open(opts.input).readlines()[:opts.num_sents]]
-bound_width = float(opts.bwidth)
-hypothesis = namedtuple("hypothesis", "lm_state, logprob, coverage, end, predecessor, phrase, distortionPenalty")
+from library import read_ds_from_file
+from library import write_ds_to_file
+from library import init
+from library import t_f_given_e
+from library import q_j_given_i_l_m
+from library import ibm_model_1_score
+from library import ibm_model_1_w_score
 
 def bitmap(sequence):
     """ Generate a coverage bitmap for a sequence of indexes """
@@ -53,17 +32,20 @@ def last1bit(b):
 
 # def stateeq(state1, state2):
 #     return (state1.lm_state == state2.lm_state) and (state1.end == state2.end) and (state1.coverage == state2.coverage)
+hypothesis = namedtuple("hypothesis", "lm_state, logprob, coverage, end, predecessor, phrase, distortionPenalty")
 
-def main():
+def main(opts, w, tm, lm, french, ibm_t):
     # tm should translate unknown words as-is with probability 1
-    for word in set(sum(french,())):
-        if (word,) not in tm:
-            tm[(word,)] = [models.phrase(word, [0.0, 0.0, 0.0, 0.0])]
+    # if w is None:
+    #     w = [1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
+    nbest_output = []
     total_prob = 0
     if opts.mute == 0:
-        sys.stderr.write("Decoding %s...\n" % (opts.input,))
+        sys.stderr.write("Start decoding %s ...\n" % (opts.input,))
     for idx,f in enumerate(french):
+        if opts.mute == 0:
+            sys.stderr.write("Decoding sentence #%s ...\n" % (str(idx)))
         initial_hypothesis = hypothesis(lm.begin(), 0.0, 0, 0, None, None, None)
         heaps = [{} for _ in f] + [{}]
         heaps[0][lm.begin(), 0, 0] = initial_hypothesis
@@ -87,19 +69,23 @@ def main():
                                         lm_prob += prob
                                     lm_prob += lm.end(lm_state) if k == len(f) else 0.0
                                     coverage = h.coverage | bitmap(range(j, k))
-                                    # print phrase
-                                    logprob = h.logprob + opts.alpha*lm_prob + opts.beta*getDotProduct(phrase.several_logprob) + opts.eta*abs(h.end + 1 - j)
+                                    # logprob = h.logprob + lm_prob*w[0] + getDotProduct(phrase.several_logprob, w[2:6]) + abs(h.end+1-j)*w[1] + ibm_model_1_w_score(ibm_t, f, phrase.english)*w[6]
+                                    logprob  = h.logprob
+                                    logprob += lm_prob*w[0]
+                                    logprob += getDotProduct(phrase.several_logprob, w[2:6])
+                                    logprob += abs(h.end+1-j)*w[1]
+                                    logprob += ibm_model_1_w_score(ibm_t, f, phrase.english)*w[6]
 
                                     new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase, abs(h.end + 1 - j))
 
                                     # add to heap
                                     num = onbits(coverage)
                                     if (lm_state, coverage, k) not in heaps[num] or new_hypothesis.logprob > heaps[num][lm_state, coverage, k].logprob:
-                                            heaps[num][lm_state, coverage, k] = new_hypothesis
+                                        heaps[num][lm_state, coverage, k] = new_hypothesis
 
 
         winners = sorted(heaps[-1].itervalues(), key=lambda h: h.logprob)[0:opts.nbest]
-        
+
         def get_lm_logprob(test_list):
             stance = []
             for i in test_list:
@@ -113,7 +99,7 @@ def main():
             return score
         def get_list_and_features(h):
             lst = [];
-            features = [0, 0, 0, 0, 0, 0]
+            features = [0, 0, 0, 0, 0, 0, 0]
             current_h = h;
             while current_h.phrase is not None:
                 # print current_h
@@ -126,82 +112,20 @@ def main():
                 current_h = current_h.predecessor
             lst.reverse()
             features[0] = get_lm_logprob(lst)
+            features[6] = ibm_model_1_score(ibm_t, f, lst)
             return (lst, features)
 
-
-
         for win in winners:
-            print idx,
-            print "|||",
+            s = str(idx) + " ||| "
             (lst, features) = get_list_and_features(win)
             for word in lst:
-                print word,
-            print "|||",
+                s += word + ' '
+            s += '||| '
             for fea in features:
-                print fea,
-            print
+                s += str(fea) + ' '
+            nbest_output.append(s)
+    return nbest_output
 
-
-        # eng_list = ["<s>"]
-        # def get_list(h, output_list):
-        #     if h.predecessor is not None:
-        #         get_list(h.predecessor, output_list)
-        #         output_list.append(h.phrase.english)
-        # def get_prob(test_list):
-        #     stance = []
-        #     for i in test_list:
-        #         stance += (i.split())
-        #     stance = tuple(stance)
-        #     lm_state = (stance[0],)
-        #     score = 0.0
-        #     for word in stance[1:]:
-        #         (lm_state, word_score) = lm.score(lm_state, word)
-        #         score += word_score
-        #     return score
-        # get_list(winner, eng_list)
-        # eng_list.append("</s>")
-
-        # if opts.mute == 0:
-        #     sys.stderr.write("Start local search ...\n")
-
-        # while True:
-        #     best_list = copy.deepcopy(eng_list)
-            
-        #     # insert
-        #     for i in range(1,len(eng_list)-1):
-        #         for j in range(1, i):
-        #             now_list = copy.deepcopy(eng_list)
-        #             now_list.pop(i)
-        #             now_list.insert(j, eng_list[i])
-        #             if get_prob(now_list) > get_prob(best_list):
-        #                 best_list = now_list
-
-        #         for j in range(i+2, len(eng_list)-1):
-        #             now_list = copy.deepcopy(eng_list)
-        #             now_list.insert(j, eng_list[i])
-        #             now_list.pop(i)
-        #             if get_prob(now_list) > get_prob(best_list):
-        #                 best_list = now_list
-        #     # swap
-        #     for i in range(1,len(eng_list)-2):
-        #         for j in range(i+1,len(eng_list)-1):
-        #             now_list = copy.deepcopy(eng_list)
-        #             now_list[i], now_list[j] = now_list[j], now_list[i]
-        #             if get_prob(now_list) > get_prob(best_list):
-        #                 best_list = now_list
-            
-        #     if get_prob(best_list) == get_prob(eng_list):
-        #         break
-        #     else:
-        #         eng_list = best_list
-
-        # for i in eng_list[1:-1]:
-        #     print i,
-        # print
-
-        # if opts.mute == 0:
-        #    sys.stderr.write("#{0}:{2} - {1}\n".format(idx, " ".join(eng_list[1:-1]) , get_prob(eng_list)))
-
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     # main()
 
