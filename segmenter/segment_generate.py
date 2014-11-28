@@ -19,18 +19,20 @@ trigram = defaultdict(int)
 def trace_sentence(s):
     if (len(s) == 2):
         return
-    for i in range(2, len(s)):
+    for i in range(len(s)):
         unigram[s[i]] += 1
-        key = "{} {}".format(s[i-1], s[i])
-        bigram[key] += 1
-        key = "{} {} {}".format(s[i-2], s[i-1], s[i])
-        trigram[key] += 1
+        if i >= 1:
+            key = "{} {}".format(s[i-1], s[i])
+            bigram[key] += 1
+        if i >= 2:
+            key = "{} {} {}".format(s[i-2], s[i-1], s[i])
+            trigram[key] += 1
     return
 
 for path in BOI_path_list:
     with open(path) as f:
         word = ""
-        sentence = ["<ss>", "<s>"]
+        sentence = []
         cnt = 0
         for line in f:
             match = line.strip().split()
@@ -40,7 +42,7 @@ for path in BOI_path_list:
                     sys.stderr.write('.')
                     cnt = 0
                 cnt += 1
-                sentence = ["<ss>", "<s>"]
+                sentence = []
                 continue
             if match[1] == 'B' or match[1] == 'O':
                 if len(word) <= 0:
@@ -56,7 +58,7 @@ for path in article_path_list:
         cnt = 0
         for line in f:
             sentence = line.strip().split()
-            sentence[:0] = ["<ss>", "<s>"]
+            sentence[:0] = []
             trace_sentence(sentence)
             if cnt % 500 == 0:
                 sys.stderr.write('.')
