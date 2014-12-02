@@ -9,7 +9,7 @@ path3 = '/usr/shared/CMPT/nlp-class/project/seg/upenn_train.utf8'
 BOI_path_list = [path1, path2, path3]
 
 dev_path = '/usr/shared/CMPT/nlp-class/project/dev/all.cn-en.cn'
-test_path = '/usr/shared/CMPT/nlp-class/project/test/all.cn-en.cn'
+test_path = '/usr/shared/CMPT/nlp-class/project/large/train.cn'
 article_path_list = [dev_path, test_path]
 
 unigram = defaultdict(int)

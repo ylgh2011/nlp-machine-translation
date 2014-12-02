@@ -19,9 +19,9 @@ lam2 = (1 - lam3) * lam3
 lam1 = 1 - lam3 - lam2
 word_len = p1w.maxlen
 
-source_path = '/usr/shared/CMPT/nlp-class/project/small/train.cn.unseg'
+source_path = '/usr/shared/CMPT/nlp-class/project/test/all.cn-en.cn'
 #source_path = './train.cn.unseg'
-seg_out = codecs.open("./train.cn", "w", "utf-8")
+seg_out = codecs.open("./test.cn", "w", "utf-8")
 
 
 def back_trace(entry):
@@ -57,6 +57,7 @@ with open(source_path) as f:
     cnt = 0
     for line in f:
         utf8line = unicode(line.strip(), 'utf-8')
+        utf8line.replace(' ', '')
         liness = Entry("<ss>", 0.0, None)
         lines = Entry("<s>", 0.0, liness)
         entry_list = [liness, lines]
