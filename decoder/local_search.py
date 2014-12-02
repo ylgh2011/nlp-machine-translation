@@ -51,4 +51,4 @@ def local_search(sentence, lm):
             else:
                 eng_list = best_list
 
-        return ' '.joint(eng_list[1:-1])
+        return ' '.join(eng_list[1:-1])
