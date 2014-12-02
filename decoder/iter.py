@@ -3,13 +3,14 @@ import optparse
 import sys
 import copy
 from collections import namedtuple
-from score-reranker.py
+
 
 import beam
 import cal_weight
 import models
 import library
 import rerank
+import score_reranker
 
 optparser = optparse.OptionParser()
 
@@ -89,19 +90,25 @@ sys.stderr.write("\n")
 ## start doing iteration between decoder and reranker
 w = [1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 nbest_sentences = []
-current_bleu_score = 0
+best_bleu_score = 0
 for i in range(opts.iter):
     sys.stderr.write("Iteration %d\n" % i)
     nbest_sentences = beam.main(opts, w, tm, lm, french, ibm_t)
     w_str = cal_weight.main(opts, references, nbest_sentences)
 
+    (score_list, translation_list) = rerank.main(w, nbest_sentences)
+    current_bleu_score = score_reranker.main(opts, translation_list)
+    if best_bleu_score < current_bleu_score:
+        best_bleu_score = current_bleu_score
+    else:
+        break
+
     w = [float(item) for item in w_str.split('\n')]
     sys.stderr.write("w = " + str(w) + '\n')
 
 
-
-
-print w
+print '\n'.join(w)
+print
 # (score_list, translation_list) = rerank.main(w, nbest_sentences)
 # counter = 0
 # for (score, translation) in zip(score_list, translation_list):
