@@ -55,6 +55,7 @@ class LM:
         if mute == 0:
             sys.stderr.write("Reading language model from %s...\n" % (filename,))
         self.table = defaultdict(lambda: ngram_stats(0, 0))
+        self.table[("<unk>",)] = ngram_stats(-5.369621, 0)
         fp = gzip.open(filename) if filename[-3:] == '.gz' else open(filename)
         for line in fp:
             entry = line.strip().split("\t")

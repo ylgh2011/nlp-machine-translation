@@ -61,7 +61,9 @@ def ibm_model_1_w_score(t, f, ew):
 def ibm_model_1_score(t, f, e):
     l = float(len(e))
     m = float(len(f))
-    score = log(epsi / float((l+1)**len(f)))
+    score = log(epsi)
+    for i in len(f):
+        score -= log(l+1)
     for fw in f:
         fw_sum = 0
         for ew in e:
