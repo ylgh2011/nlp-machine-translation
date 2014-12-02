@@ -45,7 +45,7 @@ optparser.add_option("--num_sentences", dest="num_sents", default=sys.maxint, ty
 optparser.add_option("--translations-per-phrase", dest="k", default=20, type="int", help="Limit on number of translations to consider per phrase (default=1)")
 optparser.add_option("--heap-size", dest="s", default=1000, type="int", help="Maximum heap size (default=1)")
 optparser.add_option("--disorder", dest="disord", default=5, type="int", help="Disorder limit (default=6)")
-optparser.add_option("--beam width", dest="bwidth", default=10,  help="beamwidth")
+optparser.add_option("--beam width", dest="bwidth", default=2,  help="beamwidth")
 optparser.add_option("--mute", dest="mute", default=0, type="int", help="mute the output")
 optparser.add_option("--nbest", dest="nbest", default=1, type="int", help="print out nbest results")
 opts = optparser.parse_args()[0]
@@ -62,7 +62,8 @@ def main(w = None):
         w = [1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     tm = models.TM(opts.tm, opts.k, opts.mute)
     lm = models.LM(opts.lm, opts.mute)
-    ibm_t = {} # init('./data/ibm2.t.ds.gz')
+    # ibm_t = {} 
+    ibm_t = init('./data/ibm2.t.ds.gz')
     french = [tuple(line.strip().split()) for line in open(opts.input).readlines()[:opts.num_sents]]
     bound_width = float(opts.bwidth)
 
