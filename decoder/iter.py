@@ -10,7 +10,7 @@ import cal_weight
 import models
 import library
 import rerank
-import score_reranker
+import score_reranker_avg
 
 optparser = optparse.OptionParser()
 
@@ -43,10 +43,14 @@ optparser.add_option("--nbest", dest="nbest", default=100, type="int", help="pri
 ########################################################################################################################################
 ## Parameters for reranker part
 # optparser.add_option("--en", dest="en", default="/usr/shared/CMPT/nlp-class/project/toy/train.cn", help="target language references for learning how to rank the n-best list")
-# optparser.add_option("--en", dest="en", default="/usr/shared/CMPT/nlp-class/project/dev/all.cn-en.en0", help="target language references for learning how to rank the n-best list")
-optparser.add_option("--en", dest="en", default="/usr/shared/CMPT/nlp-class/project/small/train.en", help="target language references for learning how to rank the n-best list")
+# optparser.add_option("--en", dest="en", default="/usr/shared/CMPT/nlp-class/project/small/train.en", help="target language references for learning how to rank the n-best list")
 
-optparser.add_option("--epo", dest="epo", type="int",default=5, help="number of epochs for perceptron training (default 5)")
+optparser.add_option("--en0", dest="en0", default="/usr/shared/CMPT/nlp-class/project/dev/all.cn-en.en0", help="target language references for learning how to rank the n-best list")
+optparser.add_option("--en1", dest="en1", default="/usr/shared/CMPT/nlp-class/project/dev/all.cn-en.en1", help="target language references for learning how to rank the n-best list")
+optparser.add_option("--en2", dest="en2", default="/usr/shared/CMPT/nlp-class/project/dev/all.cn-en.en2", help="target language references for learning how to rank the n-best list")
+optparser.add_option("--en3", dest="en3", default="/usr/shared/CMPT/nlp-class/project/dev/all.cn-en.en3", help="target language references for learning how to rank the n-best list")
+
+optparser.add_option("--epo", dest="epo", type="int", default=5, help="number of epochs for perceptron training (default 5)")
 optparser.add_option("--eta", dest="eta", type="float", default=0.1, help="perceptron learning rate (default 0.1)")
 optparser.add_option("--xi", dest="xi", type="int", default=100, help="training data generated from the samples tau (default 100)")
 optparser.add_option("--alpha", dest="alpha", type="float", default=0.1, help="sampler acceptance cutoff (default 0.1)")
@@ -70,21 +74,27 @@ for word in set(sum(french,())):
     if (word,) not in tm:
         tm[(word,)] = [models.phrase(word, [0.0, 0.0, 0.0, 0.0])]
 
-# ibm_t = library.init('./data/ibm2.t.ds.gz')
 ibm_t = {}
+# ibm_t = library.init('./data/ibm2.t.ds.gz')
 
 
 ########################################################################################################################################
 ## init for reranker part
-references = []
-sys.stderr.write("Reading English Sentences\n")
-for i, line in enumerate(open(opts.en)):
-    # Initialize references to correct english sentences
-    references.append(line)
-    if i%100 == 0:
-        sys.stderr.write(".")
-sys.stderr.write("\n")
-
+references = [[], [], [], []]
+sys.stderr.write("Reading English Sentences ... \n")
+def readReference(ref_fileName):
+    ref = []
+    for i, line in enumerate(open(ref_fileName)):
+        # Initialize references to correct english sentences
+        ref.append(line)
+        if i%1000 == 0:
+            sys.stderr.write(".")
+    sys.stderr.write("\n")
+    return ref
+references[0] = readReference(opts.en0)
+references[1] = readReference(opts.en1)
+references[2] = readReference(opts.en2)
+references[3] = readReference(opts.en3)
 
 ########################################################################################################################################
 ## start doing iteration between decoder and reranker
@@ -97,7 +107,7 @@ for i in range(opts.iter):
     w_str = cal_weight.main(opts, references, nbest_sentences)
 
     (score_list, translation_list) = rerank.main(w, nbest_sentences)
-    current_bleu_score = score_reranker.main(opts, translation_list)
+    current_bleu_score = score_reranker_avg.main(opts, translation_list)
     if best_bleu_score < current_bleu_score:
         best_bleu_score = current_bleu_score
     else:
@@ -107,8 +117,8 @@ for i in range(opts.iter):
     sys.stderr.write("w = " + str(w) + '\n')
 
 
-print '\n'.join(w)
-print
+for item in w:
+    print item
 # (score_list, translation_list) = rerank.main(w, nbest_sentences)
 # counter = 0
 # for (score, translation) in zip(score_list, translation_list):
