@@ -36,7 +36,7 @@ optparser.add_option("-n", "--num_sentences", dest="num_sents", default=sys.maxi
 optparser.add_option("-k", "--translations-per-phrase", dest="k", default=20, type="int", help="Limit on number of translations to consider per phrase (default=1)")
 optparser.add_option("--heap-size", dest="s", default=1000, type="int", help="Maximum heap size (default=1)")
 optparser.add_option("--disorder", dest="disord", default=5, type="int", help="Disorder limit (default=6)")
-optparser.add_option("--beam width", dest="bwidth", default=2,  help="beamwidth")
+optparser.add_option("--beam width", dest="bwidth", default=1,  help="beamwidth")
 optparser.add_option("--mute", dest="mute", default=0, type="int", help="mute the output")
 optparser.add_option("--nbest", dest="nbest", default=100, type="int", help="print out nbest results")
 
@@ -75,7 +75,7 @@ for word in set(sum(french,())):
         tm[(word,)] = [models.phrase(word, [0.0, 0.0, 0.0, 0.0])]
 
 ibm_t = {}
-# ibm_t = library.init('./data/ibm2.t.ds.gz')
+ibm_t = library.init('./data/ibm.t.gz')
 
 
 ########################################################################################################################################
@@ -112,9 +112,12 @@ for i in range(opts.iter):
         best_bleu_score = current_bleu_score
     else:
         break
-
+ 
     w = [float(item) for item in w_str.split('\n')]
     sys.stderr.write("w = " + str(w) + '\n')
+
+    print "Iteration " + str(i)
+    print w
 
 
 for item in w:

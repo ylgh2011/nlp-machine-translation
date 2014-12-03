@@ -3,6 +3,8 @@ import optparse
 import sys
 import models
 import copy
+import local_search
+
 from collections import namedtuple
 from models import getDotProduct
 
@@ -34,36 +36,44 @@ optparser = optparse.OptionParser()
 
 optparser.add_option("--input", dest="input", default="/usr/shared/CMPT/nlp-class/project/test/all.cn-en.cn", help="File containing sentences to translate (default=data/input)")
 
-optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/toy/phrase-table/phrase_table.out", help="File containing translation model (default=data/tm)")
+optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/test-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
+# optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/toy/phrase-table/phrase_table.out", help="File containing translation model (default=data/tm)")
 # optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/small/phrase-table/moses/phrase-table.gz", help="File containing translation model (default=data/tm)")
 # optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/dev-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
 
-# optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz", help="File containing ARPA-format language model (default=data/lm)")
-optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.tiny.3g.arpa", help="File containing ARPA-format language model (default=data/lm)")
+optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz", help="File containing ARPA-format language model (default=data/lm)")
+# optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.tiny.3g.arpa", help="File containing ARPA-format language model (default=data/lm)")
 
 optparser.add_option("--num_sentences", dest="num_sents", default=sys.maxint, type="int", help="Number of sentences to decode (default=no limit)")
 optparser.add_option("--translations-per-phrase", dest="k", default=20, type="int", help="Limit on number of translations to consider per phrase (default=1)")
 optparser.add_option("--heap-size", dest="s", default=1000, type="int", help="Maximum heap size (default=1)")
 optparser.add_option("--disorder", dest="disord", default=5, type="int", help="Disorder limit (default=6)")
-optparser.add_option("--beam width", dest="bwidth", default=2,  help="beamwidth")
+optparser.add_option("--beam width", dest="bwidth", default=1,  help="beamwidth")
 optparser.add_option("--mute", dest="mute", default=0, type="int", help="mute the output")
 optparser.add_option("--nbest", dest="nbest", default=1, type="int", help="print out nbest results")
+optparser.add_option("-w", "--weights", dest="weights", default="no weights specify", help="file contains weights")
 opts = optparser.parse_args()[0]
 
 
 
 hypothesis = namedtuple("hypothesis", "lm_state, logprob, coverage, end, predecessor, phrase, distortionPenalty")
 
-def main(w = None):
+def main(w0 = None):
     # tm should translate unknown words as-is with probability 1
 
+    w = w0
     if w is None:
         # lm_logprob, distortion penenalty, direct translate logprob, direct lexicon logprob, inverse translation logprob, inverse lexicon logprob
-        w = [1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        if opts.weights == "no weights specify":
+            w = [1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        else:
+            w = [float(line.strip()) for line in open(opts.weights)]
+    sys.stderr.write(str(w) + '\n')
+
     tm = models.TM(opts.tm, opts.k, opts.mute)
     lm = models.LM(opts.lm, opts.mute)
     # ibm_t = {} 
-    ibm_t = init('./data/ibm2.t.ds.gz')
+    ibm_t = init('./data/ibm.t.gz')
     french = [tuple(line.strip().split()) for line in open(opts.input).readlines()[:opts.num_sents]]
     bound_width = float(opts.bwidth)
 
@@ -150,7 +160,8 @@ def main(w = None):
         for win in winners:
             # s = str(idx) + " ||| "
             (lst, features) = get_list_and_features(win)
-            print " ".join(lst)
+            print local_search.local_search(lst, lm)
+            # print " ".join(lst)
             # for word in lst:
                 # s += word + ' '
             # s += '||| '
