@@ -25,12 +25,12 @@ optparser.add_option("--input", dest="input", default="/usr/shared/CMPT/nlp-clas
 # optparser.add_option("--input", dest="input", default="/usr/shared/CMPT/nlp-class/project/small/train.cn", help="File containing sentences to translate (default=data/input)")
 # optparser.add_option("--input", dest="input", default="../segmenter/train.cn", help="File containing sentences to translate (default=data/input)")
 
-optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/toy/phrase-table/phrase_table.out", help="File containing translation model (default=data/tm)")
-# optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/dev-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
+# optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/toy/phrase-table/phrase_table.out", help="File containing translation model (default=data/tm)")
+optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/dev-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
 # optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/test-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
 
-optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.tiny.3g.arpa", help="File containing ARPA-format language model (default=data/lm)")
-# optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz", help="File containing ARPA-format language model (default=data/lm)")
+# optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.tiny.3g.arpa", help="File containing ARPA-format language model (default=data/lm)")
+optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz", help="File containing ARPA-format language model (default=data/lm)")
 
 optparser.add_option("-n", "--num_sentences", dest="num_sents", default=sys.maxint, type="int", help="Number of sentences to decode (default=no limit)")
 optparser.add_option("-k", "--translations-per-phrase", dest="k", default=10, type="int", help="Limit on number of translations to consider per phrase (default=1)")
@@ -75,8 +75,8 @@ for word in set(sum(french,())):
     if (word,) not in tm:
         tm[(word,)] = [models.phrase(word, [0.0, 0.0, 0.0, 0.0])]
 
-ibm_t = {}
-#ibm_t = library.init('./data/ibm.t.gz')
+# ibm_t = {}
+ibm_t = library.init('./data/ibm.t.gz')
 
 
 ########################################################################################################################################
@@ -102,7 +102,8 @@ references[3] = readReference(opts.en3)
 ########################################################################################################################################
 ## start doing iteration between decoder and reranker
 # w = [1.0, -0.01, 1.0, 1.0, 1.0, 1.0, 1.0]
-w = [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
+# w = [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
+w = [0.17, 0.17, 0.17, 0.17, 0.17, 0.17]
 nbest_sentences_0 = beam.main(opts, w, tm, lm, french, ibm_t)
 (score_list, translation_list) = rerank.main(w, nbest_sentences_0)
 best_bleu_score = score_reranker_avg.main(opts, translation_list)

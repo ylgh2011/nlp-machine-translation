@@ -44,8 +44,8 @@ def main(opts, w, tm, lm, french, ibm_t):
     if opts.mute == 0:
         sys.stderr.write("Start decoding %s ...\n" % (opts.input,))
     for idx,f in enumerate(french):
-        if opts.mute == 0 and idx % 500 == 0:
-            sys.stderr.write("Decoding sentence #%s ...\n" % (str(idx)))
+        if opts.mute == 0 and idx % 100 == 0:
+            sys.stderr.write(".")
         initial_hypothesis = hypothesis(lm.begin(), 0.0, 0, 0, None, None, None)
         heaps = [{} for _ in f] + [{}]
         heaps[0][lm.begin(), 0, 0] = initial_hypothesis
@@ -72,9 +72,8 @@ def main(opts, w, tm, lm, french, ibm_t):
                                     # logprob = h.logprob + lm_prob*w[0] + getDotProduct(phrase.several_logprob, w[2:6]) + abs(h.end+1-j)*w[1] + ibm_model_1_w_score(ibm_t, f, phrase.english)*w[6]
                                     logprob  = h.logprob
                                     logprob += lm_prob*w[0]
-                                    logprob += getDotProduct(phrase.several_logprob, w[2:6])
-                                    logprob += opts.diseta*abs(h.end+1-j)*w[1]
-                                    logprob += ibm_model_1_w_score(ibm_t, f, phrase.english)*w[6]
+                                    logprob += getDotProduct(phrase.several_logprob, w[1:5])
+                                    logprob += ibm_model_1_w_score(ibm_t, f, phrase.english)*w[5]
 
                                     new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase, abs(h.end + 1 - j))
 
@@ -82,7 +81,6 @@ def main(opts, w, tm, lm, french, ibm_t):
                                     num = onbits(coverage)
                                     if (lm_state, coverage, k) not in heaps[num] or new_hypothesis.logprob > heaps[num][lm_state, coverage, k].logprob:
                                         heaps[num][lm_state, coverage, k] = new_hypothesis
-
 
         winners = sorted(heaps[-1].itervalues(), key=lambda h: h.logprob)[0:opts.nbest]
 
@@ -99,20 +97,20 @@ def main(opts, w, tm, lm, french, ibm_t):
             return score
         def get_list_and_features(h):
             lst = [];
-            features = [0, 0, 0, 0, 0, 0, 0]
+            # features = [0, 0, 0, 0, 0, 0, 0]
+            features = [0, 0, 0, 0, 0, 0]
             current_h = h;
             while current_h.phrase is not None:
                 # print current_h
                 lst.append(current_h.phrase.english);
-                features[1] += current_h.distortionPenalty              # distortion penaulty
-                features[2] += current_h.phrase.several_logprob[0]      # translation feature 1
-                features[3] += current_h.phrase.several_logprob[1]      # translation feature 2
-                features[4] += current_h.phrase.several_logprob[2]      # translation feature 3
-                features[5] += current_h.phrase.several_logprob[3]      # translation feature 4
+                features[1] += current_h.phrase.several_logprob[0]      # translation feature 1
+                features[2] += current_h.phrase.several_logprob[1]      # translation feature 2
+                features[3] += current_h.phrase.several_logprob[2]      # translation feature 3
+                features[4] += current_h.phrase.several_logprob[3]      # translation feature 4
                 current_h = current_h.predecessor
             lst.reverse()
             features[0] = get_lm_logprob(lst)                           # language model score
-            features[6] = ibm_model_1_score(ibm_t, f, lst)
+            features[5] = ibm_model_1_score(ibm_t, f, lst)
             return (lst, features)
 
         for win in winners:
@@ -125,6 +123,7 @@ def main(opts, w, tm, lm, french, ibm_t):
                 s += str(fea) + ' '
             nbest_output.append(s)
 
+    sys.stderr.write("\n")
     # log_file = open('./log.txt','wb')
     # log_file.write(str(nbest_output))
 

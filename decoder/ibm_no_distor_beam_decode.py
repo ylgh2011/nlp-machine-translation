@@ -65,7 +65,7 @@ def main(w0 = None):
     if w is None:
         # lm_logprob, distortion penenalty, direct translate logprob, direct lexicon logprob, inverse translation logprob, inverse lexicon logprob
         if opts.weights == "no weights specify":
-            w = [0.17, 0.17, 0.17, 0.17, 0.17]
+            w = [0.17, 0.17, 0.17, 0.17, 0.17, 0.17]
         else:
             w = [float(line.strip()) for line in open(opts.weights)]
     sys.stderr.write(str(w) + '\n')
@@ -145,10 +145,10 @@ def main(w0 = None):
             while current_h.phrase is not None:
                 # print current_h
                 lst.append(current_h.phrase.english);
-                features[1] += current_h.phrase.several_logprob[0]
-                features[2] += current_h.phrase.several_logprob[1]
-                features[3] += current_h.phrase.several_logprob[2]
-                features[4] += current_h.phrase.several_logprob[3]
+                features[1] += current_h.phrase.several_logprob[0]      # translation feature 1
+                features[2] += current_h.phrase.several_logprob[1]      # translation feature 2
+                features[3] += current_h.phrase.several_logprob[2]      # translation feature 3
+                features[4] += current_h.phrase.several_logprob[3]      # translation feature 4
                 current_h = current_h.predecessor
             lst.reverse()
             features[0] = get_lm_logprob(lst)
