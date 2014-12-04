@@ -52,7 +52,7 @@ def vector_plus(v1, v2, multiply=1):
     return ans
 
 
-def main(opts, references, input_nbest):
+def main(opts, references, input_nbest, theta0=None):
     entry = namedtuple("entry", "sentence, smoothed_bleu, feature_list")
     nbests = None
     if nbests is None:
@@ -77,7 +77,10 @@ def main(opts, references, input_nbest):
                 sys.stderr.write(".")
 
     arg_num = len(nbests[0][0].feature_list)
-    theta = [1.0/arg_num for _ in xrange(arg_num)] #initialization
+
+    theta = theta0
+    if theta is None:
+        theta = [1.0/arg_num for _ in xrange(arg_num)] #initialization
 
     avg_theta = [ 0.0 for _ in xrange(arg_num)]
     avg_cnt = 0

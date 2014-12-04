@@ -1,0 +1,93 @@
+>>> print "w = " + str(w) +  ", score before iteration: " + str(best_bleu_score)
+w = [1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0], score before iteration: 0.0567837884522
+>>> 
+>>> for i in range(opts.iter):
+...     sys.stderr.write("Iteration %d\n" % i)
+...     nbest_sentences = beam.main(opts, w, tm, lm, french, ibm_t)
+...     new_w_str = cal_weight.main(opts, references, nbest_sentences, w)
+...     new_w = [float(item) for item in new_w_str.split('\n')]
+...     (score_list, translation_list) = rerank.main(new_w, nbest_sentences)
+...     new_bleu_score = score_reranker_avg.main(opts, translation_list)
+...     sys.stderr.write("new_w = " + str(new_w) + ", new_bleu_score = " + str(new_bleu_score) + '\n')
+...     if best_bleu_score < new_bleu_score:
+...         best_bleu_score = new_bleu_score
+...         w = new_w
+...     else:
+...         pass
+... 
+Iteration 0
+No nbests on disk, so calculating ndests ... 
+..........
+Training...
+Mistake:  291
+Mistake:  299
+Mistake:  284
+Mistake:  273
+Mistake:  278
+Computing best BLEU score and outputing...
+socre for en0: 0.0601906781288
+socre for en1: 0.0570039605865
+socre for en2: 0.0521043780757
+socre for en3: 0.0515559935462
+new_w = [0.628352156118, 0.900706575074, 0.390114072086, 1.97806529642, 1.85585088058, -0.379448944719, -0.5228753902], new_bleu_score = 0.0552137525843
+Iteration 1
+No nbests on disk, so calculating ndests ... 
+..........
+Training...
+Mistake:  291
+Mistake:  290
+Mistake:  287
+Mistake:  288
+Mistake:  290
+Computing best BLEU score and outputing...
+socre for en0: 0.0604888515002
+socre for en1: 0.0572810472682
+socre for en2: 0.0522101916645
+socre for en3: 0.0519579329095
+new_w = [0.616584687095, 0.77383218842, 0.391948263221, 1.97652502456, 1.88462766174, -0.2258959817, -0.544936059739], new_bleu_score = 0.0554845058356
+Iteration 2
+No nbests on disk, so calculating ndests ... 
+..........
+Training...
+Mistake:  291
+Mistake:  296
+Mistake:  288
+Mistake:  295
+Mistake:  277
+Computing best BLEU score and outputing...
+socre for en0: 0.0600528472508
+socre for en1: 0.05683599994
+socre for en2: 0.0519635358675
+socre for en3: 0.0514153239049
+new_w = [0.615290626761, 0.814244357213, 0.375092914998, 1.99085227159, 1.86112895792, -0.438874270876, -0.588638564005], new_bleu_score = 0.0550669267408
+Iteration 3
+
+No nbests on disk, so calculating ndests ... 
+..........
+Training...
+Mistake:  295
+Mistake:  294
+Mistake:  277
+Mistake:  272
+Mistake:  272
+Computing best BLEU score and outputing...
+socre for en0: 0.0605099760218
+socre for en1: 0.0573277546599
+socre for en2: 0.0523443621829
+socre for en3: 0.0519573479585
+new_w = [0.607417843867, 0.508876349362, 0.35714124459, 1.83398840762, 1.73901457626, -0.268973270724, -0.536903751026], new_bleu_score = 0.0555348602058
+Iteration 4
+No nbests on disk, so calculating ndests ... 
+..........
+Training...
+Mistake:  286
+Mistake:  272
+Mistake:  321
+Mistake:  285
+Mistake:  285
+Computing best BLEU score and outputing...
+socre for en0: 0.0603635514748
+socre for en1: 0.0571681151442
+socre for en2: 0.0521966358722
+socre for en3: 0.0518077142277
+new_w = [0.677109584517, 0.715525024534, 0.378347733288, 2.13467967308, 1.91376516171, -0.323812555177, -0.650574874601], new_bleu_score = 0.0553840041797

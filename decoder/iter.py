@@ -91,6 +91,8 @@ def readReference(ref_fileName):
             sys.stderr.write(".")
     sys.stderr.write("\n")
     return ref
+
+
 references[0] = readReference(opts.en0)
 references[1] = readReference(opts.en1)
 references[2] = readReference(opts.en2)
@@ -99,29 +101,34 @@ references[3] = readReference(opts.en3)
 ########################################################################################################################################
 ## start doing iteration between decoder and reranker
 w = [1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-nbest_sentences = []
-best_bleu_score = 0
+nbest_sentences_0 = beam.main(opts, w, tm, lm, french, ibm_t)
+(score_list, translation_list) = rerank.main(w, nbest_sentences_0)
+best_bleu_score = score_reranker_avg.main(opts, translation_list)
+print "w = " + str(w) +  ", score before iteration: " + str(best_bleu_score)
+
 for i in range(opts.iter):
     sys.stderr.write("Iteration %d\n" % i)
     nbest_sentences = beam.main(opts, w, tm, lm, french, ibm_t)
-    w_str = cal_weight.main(opts, references, nbest_sentences)
-
-    (score_list, translation_list) = rerank.main(w, nbest_sentences)
-    current_bleu_score = score_reranker_avg.main(opts, translation_list)
-    if best_bleu_score < current_bleu_score:
-        best_bleu_score = current_bleu_score
+    new_w_str = cal_weight.main(opts, references, nbest_sentences, w)
+    new_w = [float(item) for item in new_w_str.split('\n')]
+    (score_list, translation_list) = rerank.main(new_w, nbest_sentences)
+    new_bleu_score = score_reranker_avg.main(opts, translation_list)
+    sys.stderr.write("new_w = " + str(new_w) + ", new_bleu_score = " + str(new_bleu_score) + '\n')
+    if best_bleu_score < new_bleu_score:
+        best_bleu_score = new_bleu_score
+        w = new_w
     else:
-        break
- 
-    w = [float(item) for item in w_str.split('\n')]
-    sys.stderr.write("w = " + str(w) + '\n')
+        pass
 
-    print "Iteration " + str(i)
-    print w
+
+
+
 
 
 for item in w:
     print item
+
+
 # (score_list, translation_list) = rerank.main(w, nbest_sentences)
 # counter = 0
 # for (score, translation) in zip(score_list, translation_list):
@@ -130,3 +137,11 @@ for item in w:
     # print translation
 
 # print '\n'.join([str(item) for item in w])
+
+
+reload(beam)
+reload(cal_weight)
+reload(models)
+reload(library)
+reload(rerank)
+reload(score_reranker_avg)

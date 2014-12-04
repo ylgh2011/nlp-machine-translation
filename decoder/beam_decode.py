@@ -160,8 +160,8 @@ def main(w0 = None):
         for win in winners:
             # s = str(idx) + " ||| "
             (lst, features) = get_list_and_features(win)
-            print local_search.local_search(lst, lm)
-            # print " ".join(lst)
+            # print local_search.local_search(lst, lm)
+            print " ".join(lst)
             # for word in lst:
                 # s += word + ' '
             # s += '||| '
@@ -170,5 +170,5 @@ def main(w0 = None):
             # nbest_output.append(s)
 
 if __name__ == "__main__":
-    main()
+    main(None)
 
