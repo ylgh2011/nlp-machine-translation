@@ -25,18 +25,19 @@ optparser.add_option("--input", dest="input", default="/usr/shared/CMPT/nlp-clas
 # optparser.add_option("--input", dest="input", default="/usr/shared/CMPT/nlp-class/project/small/train.cn", help="File containing sentences to translate (default=data/input)")
 # optparser.add_option("--input", dest="input", default="../segmenter/train.cn", help="File containing sentences to translate (default=data/input)")
 
-# optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/toy/phrase-table/phrase_table.out", help="File containing translation model (default=data/tm)")
-optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/dev-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
+optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/toy/phrase-table/phrase_table.out", help="File containing translation model (default=data/tm)")
+# optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/dev-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
 # optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/test-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
 
-# optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.tiny.3g.arpa", help="File containing ARPA-format language model (default=data/lm)")
-optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz", help="File containing ARPA-format language model (default=data/lm)")
+optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.tiny.3g.arpa", help="File containing ARPA-format language model (default=data/lm)")
+# optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz", help="File containing ARPA-format language model (default=data/lm)")
 
 optparser.add_option("-n", "--num_sentences", dest="num_sents", default=sys.maxint, type="int", help="Number of sentences to decode (default=no limit)")
-optparser.add_option("-k", "--translations-per-phrase", dest="k", default=20, type="int", help="Limit on number of translations to consider per phrase (default=1)")
-optparser.add_option("--heap-size", dest="s", default=1000, type="int", help="Maximum heap size (default=1)")
-optparser.add_option("--disorder", dest="disord", default=5, type="int", help="Disorder limit (default=6)")
-optparser.add_option("--beam width", dest="bwidth", default=1,  help="beamwidth")
+optparser.add_option("-k", "--translations-per-phrase", dest="k", default=10, type="int", help="Limit on number of translations to consider per phrase (default=1)")
+optparser.add_option("--heap-size", dest="s", default=100, type="int", help="Maximum heap size (default=1)")
+optparser.add_option("--disorder", dest="disord", default=3, type="int", help="Disorder limit (default=3)")
+optparser.add_option("--diseta", dest="diseta", type="float", default=0.1, help="perceptron learning rate (default 0.1)")
+optparser.add_option("--beam width", dest="bwidth", default=0.5,  help="beamwidth")
 optparser.add_option("--mute", dest="mute", default=0, type="int", help="mute the output")
 optparser.add_option("--nbest", dest="nbest", default=100, type="int", help="print out nbest results")
 
@@ -75,7 +76,7 @@ for word in set(sum(french,())):
         tm[(word,)] = [models.phrase(word, [0.0, 0.0, 0.0, 0.0])]
 
 ibm_t = {}
-ibm_t = library.init('./data/ibm.t.gz')
+#ibm_t = library.init('./data/ibm.t.gz')
 
 
 ########################################################################################################################################
@@ -100,7 +101,8 @@ references[3] = readReference(opts.en3)
 
 ########################################################################################################################################
 ## start doing iteration between decoder and reranker
-w = [1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+# w = [1.0, -0.01, 1.0, 1.0, 1.0, 1.0, 1.0]
+w = [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
 nbest_sentences_0 = beam.main(opts, w, tm, lm, french, ibm_t)
 (score_list, translation_list) = rerank.main(w, nbest_sentences_0)
 best_bleu_score = score_reranker_avg.main(opts, translation_list)
@@ -108,17 +110,24 @@ print "w = " + str(w) +  ", score before iteration: " + str(best_bleu_score)
 
 for i in range(opts.iter):
     sys.stderr.write("Iteration %d\n" % i)
+    # beam decode and output nbest file
     nbest_sentences = beam.main(opts, w, tm, lm, french, ibm_t)
+
+    # calculate weight and output the result weight
     new_w_str = cal_weight.main(opts, references, nbest_sentences, w)
     new_w = [float(item) for item in new_w_str.split('\n')]
+
+    # rerank using the output weight 
     (score_list, translation_list) = rerank.main(new_w, nbest_sentences)
+    
+    # calculate the BLEU score for the test set
     new_bleu_score = score_reranker_avg.main(opts, translation_list)
     sys.stderr.write("new_w = " + str(new_w) + ", new_bleu_score = " + str(new_bleu_score) + '\n')
     if best_bleu_score < new_bleu_score:
         best_bleu_score = new_bleu_score
         w = new_w
     else:
-        pass
+        break
 
 
 

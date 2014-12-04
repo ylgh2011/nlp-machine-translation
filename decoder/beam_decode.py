@@ -43,7 +43,7 @@ optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT
 
 optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz", help="File containing ARPA-format language model (default=data/lm)")
 # optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.tiny.3g.arpa", help="File containing ARPA-format language model (default=data/lm)")
-
+optparser.add_option("--diseta", dest="diseta", type="float", default=0.1, help="perceptron learning rate (default 0.1)")
 optparser.add_option("--num_sentences", dest="num_sents", default=sys.maxint, type="int", help="Number of sentences to decode (default=no limit)")
 optparser.add_option("--translations-per-phrase", dest="k", default=20, type="int", help="Limit on number of translations to consider per phrase (default=1)")
 optparser.add_option("--heap-size", dest="s", default=1000, type="int", help="Maximum heap size (default=1)")
@@ -116,7 +116,7 @@ def main(w0 = None):
                                     logprob  = h.logprob
                                     logprob += lm_prob*w[0]
                                     logprob += getDotProduct(phrase.several_logprob, w[2:6])
-                                    logprob += abs(h.end+1-j)*w[1]
+                                    logprob += opts.diseta*abs(h.end+1-j)*w[1]
                                     logprob += ibm_model_1_w_score(ibm_t, f, phrase.english)*w[6]
 
                                     new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase, abs(h.end + 1 - j))

@@ -44,7 +44,7 @@ def main(opts, w, tm, lm, french, ibm_t):
     if opts.mute == 0:
         sys.stderr.write("Start decoding %s ...\n" % (opts.input,))
     for idx,f in enumerate(french):
-        if opts.mute == 0:
+        if opts.mute == 0 and idx % 500 == 0:
             sys.stderr.write("Decoding sentence #%s ...\n" % (str(idx)))
         initial_hypothesis = hypothesis(lm.begin(), 0.0, 0, 0, None, None, None)
         heaps = [{} for _ in f] + [{}]
@@ -53,7 +53,7 @@ def main(opts, w, tm, lm, french, ibm_t):
             # maintain beam heap
             front_item = sorted(heap.itervalues(), key=lambda h: -h.logprob)[0]
 
-            for h in sorted(heap.itervalues(),key=lambda h: -h.logprob):#[:opts.s]: # prune
+            for h in sorted(heap.itervalues(),key=lambda h: -h.logprob)[:opts.s]: # prune
                 if h.logprob < front_item.logprob - float(opts.bwidth): continue
 
                 fopen = prefix1bits(h.coverage)
@@ -73,7 +73,7 @@ def main(opts, w, tm, lm, french, ibm_t):
                                     logprob  = h.logprob
                                     logprob += lm_prob*w[0]
                                     logprob += getDotProduct(phrase.several_logprob, w[2:6])
-                                    logprob += abs(h.end+1-j)*w[1]
+                                    logprob += opts.diseta*abs(h.end+1-j)*w[1]
                                     logprob += ibm_model_1_w_score(ibm_t, f, phrase.english)*w[6]
 
                                     new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase, abs(h.end + 1 - j))
@@ -104,14 +104,14 @@ def main(opts, w, tm, lm, french, ibm_t):
             while current_h.phrase is not None:
                 # print current_h
                 lst.append(current_h.phrase.english);
-                features[1] += current_h.distortionPenalty
-                features[2] += current_h.phrase.several_logprob[0]
-                features[3] += current_h.phrase.several_logprob[1]
-                features[4] += current_h.phrase.several_logprob[2]
-                features[5] += current_h.phrase.several_logprob[3]
+                features[1] += current_h.distortionPenalty              # distortion penaulty
+                features[2] += current_h.phrase.several_logprob[0]      # translation feature 1
+                features[3] += current_h.phrase.several_logprob[1]      # translation feature 2
+                features[4] += current_h.phrase.several_logprob[2]      # translation feature 3
+                features[5] += current_h.phrase.several_logprob[3]      # translation feature 4
                 current_h = current_h.predecessor
             lst.reverse()
-            features[0] = get_lm_logprob(lst)
+            features[0] = get_lm_logprob(lst)                           # language model score
             features[6] = ibm_model_1_score(ibm_t, f, lst)
             return (lst, features)
 
@@ -124,6 +124,10 @@ def main(opts, w, tm, lm, french, ibm_t):
             for fea in features:
                 s += str(fea) + ' '
             nbest_output.append(s)
+
+    # log_file = open('./log.txt','wb')
+    # log_file.write(str(nbest_output))
+
     return nbest_output
 
 # if __name__ == "__main__":
