@@ -95,7 +95,7 @@ def main(opts, w, tm, lm, french, ibm_t):
                 (lm_state, word_score) = lm.score(lm_state, word)
                 score += word_score
             return score
-        def get_list_and_features(h, idx):
+        def get_list_and_features(h, idx_self):
             lst = [];
             features = [0, 0, 0, 0, 0, 0, 0]
             current_h = h;
@@ -111,7 +111,7 @@ def main(opts, w, tm, lm, french, ibm_t):
             lst.reverse()
             features[0] = get_lm_logprob(lst)                           # language model score
             features[5] = ibm_model_1_score(ibm_t, f, lst)
-            features[6] = len(lst) - len(french[idx])
+            features[6] = len(lst) - len(french[idx_self])
             return (lst, features)
         def cmpKey(h):
             (lst, features) = get_list_and_features(h)
