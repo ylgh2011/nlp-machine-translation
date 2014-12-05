@@ -46,12 +46,14 @@ optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nl
 optparser.add_option("--diseta", dest="diseta", type="float", default=0.1, help="perceptron learning rate (default 0.1)")
 optparser.add_option("--num_sentences", dest="num_sents", default=sys.maxint, type="int", help="Number of sentences to decode (default=no limit)")
 optparser.add_option("--translations-per-phrase", dest="k", default=25, type="int", help="Limit on number of translations to consider per phrase (default=1)")
-optparser.add_option("--heap-size", dest="s", default=200, type="int", help="Maximum heap size (default=1)")
+optparser.add_option("--heap-size", dest="s", default=100, type="int", help="Maximum heap size (default=1)")
 optparser.add_option("--disorder", dest="disord", default=12, type="int", help="Disorder limit (default=6)")
 optparser.add_option("--beam width", dest="bwidth", default=60,  help="beamwidth")
 optparser.add_option("--mute", dest="mute", default=0, type="int", help="mute the output")
 optparser.add_option("--nbest", dest="nbest", default=1, type="int", help="print out nbest results")
 optparser.add_option("-w", "--weights", dest="weights", default="no weights specify", help="file contains weights")
+optparser.add_option("--start", dest="start", default=0, type="int", help="starting references")
+optparser.add_option("--end", dest="end", default=sys.maxint, type="int", help="ending references")
 opts = optparser.parse_args()[0]
 
 
@@ -66,15 +68,17 @@ def main(w0 = None):
         # lm_logprob, distortion penenalty, direct translate logprob, direct lexicon logprob, inverse translation logprob, inverse lexicon logprob
         if opts.weights == "no weights specify":
             w = [1.0/7] * 7
+            w = [1.76846735947, 0.352553835525, 1.00071564481, 1.49937872683, 0.562198294709, -0.701483985454, 1.80395218437]
         else:
             w = [float(line.strip()) for line in open(opts.weights)]
     sys.stderr.write(str(w) + '\n')
 
     tm = models.TM(opts.tm, opts.k, opts.mute)
     lm = models.LM(opts.lm, opts.mute)
-    # ibm_t = {} 
-    ibm_t = init('./data/ibm.t.gz')
+    ibm_t = {} 
+    # ibm_t = init('./data/ibm.t.gz')
     french = [tuple(line.strip().split()) for line in open(opts.input).readlines()[:opts.num_sents]]
+    french = french[opts.start : opts.end]
     bound_width = float(opts.bwidth)
 
     for word in set(sum(french,())):
@@ -118,8 +122,8 @@ def main(w0 = None):
                                     logprob += lm_prob*w[0]
                                     logprob += getDotProduct(phrase.several_logprob, w[1:5])
                                     # logprob += opts.diseta*abs(h.end+1-j)*w[1]
-                                    logprob += ibm_model_1_w_score(ibm_t, f, phrase.english)*w[5]
-                                    logprob += (len(phrase.english.split()) - (k - j)) * w[6]
+                                    # logprob += ibm_model_1_w_score(ibm_t, f, phrase.english)*w[5]
+                                    # logprob += (len(phrase.english.split()) - (k - j)) * w[6]
 
                                     new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase, abs(h.end + 1 - j))
 

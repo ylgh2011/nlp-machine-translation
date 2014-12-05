@@ -3,8 +3,6 @@ import optparse
 import sys
 import models
 import copy
-import local_search
-
 from collections import namedtuple
 from models import getDotProduct
 
@@ -32,73 +30,31 @@ def last1bit(b):
     """ Return index of highest order bit that is on """
     return 0 if b==0 else 1+last1bit(b>>1)
 
-optparser = optparse.OptionParser()
-
-optparser.add_option("--input", dest="input", default="/usr/shared/CMPT/nlp-class/project/test/all.cn-en.cn", help="File containing sentences to translate (default=data/input)")
-
-optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/test-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
-# optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/toy/phrase-table/phrase_table.out", help="File containing translation model (default=data/tm)")
-# optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/small/phrase-table/moses/phrase-table.gz", help="File containing translation model (default=data/tm)")
-# optparser.add_option("--translation-model", dest="tm", default="/usr/shared/CMPT/nlp-class/project/large/phrase-table/dev-filtered/rules_cnt.final.out", help="File containing translation model (default=data/tm)")
-
-optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz", help="File containing ARPA-format language model (default=data/lm)")
-# optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.tiny.3g.arpa", help="File containing ARPA-format language model (default=data/lm)")
-optparser.add_option("--diseta", dest="diseta", type="float", default=0.1, help="perceptron learning rate (default 0.1)")
-optparser.add_option("--num_sentences", dest="num_sents", default=sys.maxint, type="int", help="Number of sentences to decode (default=no limit)")
-optparser.add_option("--translations-per-phrase", dest="k", default=25, type="int", help="Limit on number of translations to consider per phrase (default=1)")
-optparser.add_option("--heap-size", dest="s", default=200, type="int", help="Maximum heap size (default=1)")
-optparser.add_option("--disorder", dest="disord", default=12, type="int", help="Disorder limit (default=6)")
-optparser.add_option("--beam width", dest="bwidth", default=60,  help="beamwidth")
-optparser.add_option("--mute", dest="mute", default=0, type="int", help="mute the output")
-optparser.add_option("--nbest", dest="nbest", default=1, type="int", help="print out nbest results")
-optparser.add_option("-w", "--weights", dest="weights", default="no weights specify", help="file contains weights")
-opts = optparser.parse_args()[0]
-
-
-
+# def stateeq(state1, state2):
+#     return (state1.lm_state == state2.lm_state) and (state1.end == state2.end) and (state1.coverage == state2.coverage)
 hypothesis = namedtuple("hypothesis", "lm_state, logprob, coverage, end, predecessor, phrase, distortionPenalty")
 
-def main(w0 = None):
+def main(opts, w, tm, lm, french, ibm_t):
     # tm should translate unknown words as-is with probability 1
-
-    w = w0
-    if w is None:
-        # lm_logprob, distortion penenalty, direct translate logprob, direct lexicon logprob, inverse translation logprob, inverse lexicon logprob
-        if opts.weights == "no weights specify":
-            w = [1.0/7] * 7
-        else:
-            w = [float(line.strip()) for line in open(opts.weights)]
-    sys.stderr.write(str(w) + '\n')
-
-    tm = models.TM(opts.tm, opts.k, opts.mute)
-    lm = models.LM(opts.lm, opts.mute)
-    # ibm_t = {} 
-    ibm_t = init('./data/ibm.t.gz')
-    french = [tuple(line.strip().split()) for line in open(opts.input).readlines()[:opts.num_sents]]
-    bound_width = float(opts.bwidth)
-
-    for word in set(sum(french,())):
-        if (word,) not in tm:
-            tm[(word,)] = [models.phrase(word, [0.0, 0.0, 0.0, 0.0])]
-
-
 
     nbest_output = []
     total_prob = 0
     if opts.mute == 0:
         sys.stderr.write("Start decoding %s ...\n" % (opts.input,))
     for idx,f in enumerate(french):
-        if opts.mute == 0:
-            sys.stderr.write("Decoding sentence #%s ...\n" % (str(idx)))
+        if opts.mute == 0 and idx % 10 == 0:
+            sys.stderr.write(".")
         initial_hypothesis = hypothesis(lm.begin(), 0.0, 0, 0, None, None, None)
         heaps = [{} for _ in f] + [{}]
         heaps[0][lm.begin(), 0, 0] = initial_hypothesis
         for i, heap in enumerate(heaps[:-1]):
             # maintain beam heap
-            # front_item = sorted(heap.itervalues(), key=lambda h: -h.logprob)[0]
-            for h in sorted(heap.itervalues(),key=lambda h: -h.logprob)[:opts.s]: # prune
+            sortedHeap = sorted(heap.itervalues(), key=lambda h: -h.logprob)
+            # front_item = sortedHeap[0]
+
+            for h in sortedHeap[:opts.s]: # prune
                 # if h.logprob < front_item.logprob - float(opts.bwidth):
-                #    continue
+                #     continue
 
                 fopen = prefix1bits(h.coverage)
                 for j in xrange(fopen,min(fopen+1+opts.disord, len(f)+1)):
@@ -127,8 +83,6 @@ def main(w0 = None):
                                     num = onbits(coverage)
                                     if (lm_state, coverage, k) not in heaps[num] or new_hypothesis.logprob > heaps[num][lm_state, coverage, k].logprob:
                                         heaps[num][lm_state, coverage, k] = new_hypothesis
-
-        winners = sorted(heaps[-1].itervalues(), key=lambda h: -h.logprob)[0:opts.nbest]
 
         def get_lm_logprob(test_list):
             stance = []
@@ -159,19 +113,30 @@ def main(w0 = None):
             features[5] = ibm_model_1_score(ibm_t, f, lst)
             features[6] = len(lst) - len(french[idx_self])
             return (lst, features)
+        def cmpKey(h):
+            (lst, features) = get_list_and_features(h)
+            return -1 * sum( [float(features[i]) * w[i] for i in range(len(features))] )
+
+        # winners = sorted(heaps[-1].itervalues(), key=lambda h: cmpKey(h))[0:opts.nbest]
+        winners = sorted(heaps[-1].itervalues(), key=lambda h: -h.logprob)[0:opts.nbest]
+
 
         for win in winners:
-            # s = str(idx) + " ||| "
+            s = str(idx) + " ||| "
             (lst, features) = get_list_and_features(win, idx)
-            print local_search.local_search(lst, lm)
-            # print " ".join(lst)
-            # for word in lst:
-                # s += word + ' '
-            # s += '||| '
-            # for fea in features:
-            #     s += str(fea) + ' '
-            # nbest_output.append(s)
+            for word in lst:
+                s += word + ' '
+            s += '||| '
+            for fea in features:
+                s += str(fea) + ' '
+            nbest_output.append(s)
 
-if __name__ == "__main__":
-    main(None)
+    sys.stderr.write("\n")
+    # log_file = open('./log.txt','wb')
+    # log_file.write(str(nbest_output))
+
+    return nbest_output
+
+# if __name__ == "__main__":
+#     # main()
 

@@ -1,0 +1,184 @@
+# CMPT 413 Project Report  
+## Group Name: ylgh2011  
+##  Group Member:  
+Hexiang Hu  
+Fan Gao  
+Lyuyu Ye  
+Kaiyuan Li  
+## 
+  
+1. Motivation   
+
+We have tried to improve the translation system in decoding, reranking and segmentation. In decoding, we have experimented with local search after decoding the sentence to improve the translation. We have also generate our frequency dictionaries in unigram, bigram and trigram to use for new segmentation.  
+
+2. Approach   
+    2.1 Baseline method      
+For decoding, we are using the same algorithm in homework 4, which is Phrase-Based Translation Models. We tried both beam-search and heap-pruning to reduce the size of the heap and to speed up the translation.
+For tuning, we use feedback loop together with the method in homework 5 and method in homework 4. Steps: (1) [ Firstly, we use method in homework 4 to decode and get the first “nbest” translations sentences. ] (2) [ And then we use the method in homework 5 to calculate the weights according to the “nbest” translations. ] (3) [ we then feedback the weights to the method in homework 4 and go back to step (1). ] This loop will stop after 5 iterations or the BLEU is no longer improved. 
+
+    2.2 Local search  
+The output English sentences are in terrible orders. So we used greedy local search to re-order the words in sentences. The methods includes "insert" and "swap", and the marking standard is language model. If the language model of the modified version is better than the original version, we update the sentence. When the sentences can be update no more, we output it as final result.  
+
+    2.3 Improve segmentation (Unused)  
+We try to improve the segmentation the Chinese text under test folder. The basic algorithm we used is Jelinek-Mercer Smoothing. We generate unigram, bigram and trigram dictionaries over the data from "seg", "dev" and "large" folders. The JM equation with trigram models is: 
+
+Pjm(w(i) | w(i-1), w(i-2)) = λ1*Pml(w(i) | w(i-1), w(i-2)) + λ2*Pml(w(i) | w(i-1)) + λ3*Pml(w(i))
+λ1 = 0.618
+λ2 = λ1(1-λ1)
+λ3 = 1 - λ1 - λ2
+
+The λ1 we used is 0.618, which is the golden division.  
+However, the final segment result we got is almost the same for the original version. The only differences happened on the English phrases and numbers inside the article, and the original version is better in segmenting those objects. 
+As a result, we decide to continue using the given segmentation for further translation. 
+
+    2.4 Extra feature for decoding 
+  
+Besides the 4 features inside the translation model, we also added several other features.
+1) Language model probability (it is included in our baseline method)
+2) IBM1 model score 
+3) A length feature which represents the differences in length between Chinese and English.
+
+3. Data   
+   3.1 Baseline method 
+    For decoding:
+        translation model: large/phrase-table/test-filtered/rules_cnt.final.out
+        language model: lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz
+tiny translation model: toy/phrase-table/phrase_table.out
+tiny translation model:  lm/en.tiny.3g.arpa
+input data: test/all.cn-en.cn
+
+For tuning weights:
+        translation model: large/phrase-table/test-filtered/rules_cnt.final.out
+        language model: lm/en.gigaword.3g.filtered.train_dev_test.arpa.gz
+tiny translation model: toy/phrase-table/phrase_table.out
+tiny translation model:  lm/en.tiny.3g.arpa
+input data: dev/all.cn-en.cn
+references: dev/all.cn-en.en0
+references: dev/all.cn-en.en1
+references: dev/all.cn-en.en2
+references: dev/all.cn-en.en3
+
+For generating IBM1 model score dictionary:
+    Chinese reference: medium/train.cn
+    English reference: medium/train.en
+    We wrote ibm_dump_t.py using the 2 references above to generated IBM1 model score dictionary, and dump it as ./data/ibm.t.gz where ./ is the directory containing all python scripts. You could also get ./data/ibm.t.gz here in our group’s dropbox link: https://www.dropbox.com/s/euqixulrkf18xbn/ibm.t.gz?dl=0
+
+   3.2 Local search 
+No data used. 
+
+   3.3 Improve segmentation 
+seg/cityu_train.utf8 
+seg/mst_train.utf8 
+seg/upenn_train.utf8 
+large/train.cn 
+dev/all.cn-en.cn 
+test/all.cn-en.cn 
+ 
+4. Code
+In this assignment, we use the code of 
+    4.1 Decoder
+    beam_decode.py (modified version of our baseline.py code in homework 4)
+models.py (code provided in homework 4)
+beam_decode_*.py (a bunch of decoders to run a specific result. For instance, beam_decode_ibm1.py will get a translation by considering IBM1 model scores as a feature)
+ibm_dump_t.py (our own code generating IBM model score dictionary from references and dump it into disk)
+local_search.py (The method uses local search to re-order input sentence. The code is copied from our 4th assignment)
+    
+    4.2 Tuning weights and reranking
+iter.py (a script to concatenate decoder and reranker, doing feedback loop)
+cal_weights.py (a modified version of our final_method.py code in homework 5) 
+library.py (useful function packages that will be used by both decoder and tuning scripts, we write it our own)
+rerank.py (code provided in homework 5)
+score_reranker_avg.py (modified version of score-reranker.py in homework 5 to get average BLEU scores from 4 different references)
+bleu.py (code provided in homework 5)
+
+    4.3 Segmentation (not applied to final method though) 
+    entry.py
+    pdist.py
+    resegment.py
+    segment_generate.py
+The Segmentation code is based on Assignment 1. We reuses part of Pdist and Entry from that assignment. The segment_generator and the resegment were written new to generate dictionaries and generate new segmented Chinese article of test according to the dictionaries.
+
+
+Describe which homework code you used in your project. Provide exactly which code was used in your project not written by your group (e.g. use of an aligner from an open-source project).  
+
+
+5. Experimental Setup   
+
+We are using BLEU score as our evaluation while comparing different methods. 
+
+The methods we are trying are:
+baseline(five features),
+baseline+IBM1,
+baseline+different_length,
+baseline+IBM1+local_search, 
+baseline+IBM1+local_search+different_length, 
+baseline+tuning,
+baseline+IBM1+local_search+different_length+tuning
+
+6. Results   
+    6.1 Result Comparison  
+---------------------------------------------------------------------------------------------------
+Method              | TM        | LM                | en0    | en1    | en2    | en3    | avg_BLEU
+--------------------------------|-------------------|--------|--------|--------|--------|----------
+baseline            | toy       | tiny              | 0.009  | 0.009  | 0.008  | 0.009  | 0.009    
+--------------------------------|-------------------|--------|--------|--------|--------|----------
+#baseline           | large     | train_dev_test    | 0.050  | 0.041  | 0.048  | 0.043  | 0.045    
+--------------------------------|-------------------|--------|--------|--------|--------|----------
+IBM1                | large     | train_dev_test    | 0.068  | 0.058  | 0.059  | 0.055  | 0.060    
+--------------------------------|-------------------|--------|--------|--------|--------|----------
+length + IBM1       | large     | train_dev_test    | 0.071  | 0.061  | 0.063  | 0.055  | 0.063    
+--------------------------------|-------------------|--------|--------|--------|--------|----------
+IBM1 + local        | large     | train_dev_test    | 0.070  | 0.060  | 0.061  | 0.056  | 0.061     
+--------------------------------|-------------------|--------|--------|--------|--------|----------
+All                 | large     | train_dev_test    | 0.074  | 0.063  | 0.064  | 0.057  | 0.065
+--------------------------------|-------------------|--------|--------|--------|--------|----------
+tuning (on dev set) | large     | train_dev_test    | 0.079  | 0.096  | 0.076  | 0.076  | 0.082 
+--------------------------------|-------------------|--------|--------|--------|--------|----------
+baseline + tuning   | large     | train_dev_test    | 0.061  | 0.051  | 0.063  | 0.054  | 0.054
+--------------------------------|-------------------|--------|--------|--------|--------|----------
+All + tuning        | large     | train_dev_test    | 0.021  | 0.019  | 0.020  | 0.013  | 0.018
+--------------------------------|-------------------|--------|--------|--------|--------|----------
+
+From the result we can see that, while adding the two features (IBM1 model score, difference of Chinese sentence length and English sentence length), the BLEU score would increase, which means those two features are indeed helping. And local search of the output sentence is also useful method in improving the BLEU score.
+
+But in terms of tuning the weights, following information is the BLEU we got when we are doing the score_reranker on dev set:
+
+w = [1.76846735947, 0.352553835525, 1.00071564481, 1.49937872683, 0.562198294709, -0.701483985454, 1.80395218437]
+socre for en0: 0.0786323065622
+socre for en1: 0.0959997693981
+socre for en2: 0.0758895875509
+socre for en3: 0.0755434230713
+avg_bleu_score = 0.0815162716456
+
+It is clear that the BLEU score on dev set is in a pretty good state. But if we tried to apply the same weights on test set, we get an awful result (the last row of the table). We think this is because those weights may overfit the dev set and thus not performing well on test set.
+
+7. Analysis of the Results
+
+In our implemenation of this machine translation framework, we improve the baseline method by using the introduced decode-rerank feedback loop for tuning as well as using extra features. And we also tried to use our own segmentation method to segment the data input, although the result is not quite good. The detailed inforamtion about our improvement are concluded in the following sections.
+
+    7.1 Segmentation
+The result for segmentation is very similar to the original segmentation, with little difference happened on segment English phrases and numbers. So it is considered to be no improvement. We finally decide not to use the segmentation in our following work.
+ 
+    7.2 Decode-rerank feedback loop
+ Tuning the weights could lead to overfitting, so we have to be careful while using it.
+
+    7.3 Effect of Extra features
+        7.3.1 Effect of IBM Model feature
+The result shows that IBM 1 model score is very helpful feature in improving BLEU score
+
+        7.3.2 Effect of Sentence Length feature
+The effect of the new feature of difference of lengths of Chinese sentence and English sentence is also useful.
+        7.3.3 Phrase reordering (local search method)
+This method proves to be a very good method in our experiment. It makes the sentence a lot more readable.
+   
+
+8. Future Work
+    8.1 Using more helpful feature
+We originally used distortion penalty as one of our feature, but it terms out that it is not helping (it even drag down the score sometimes). So we remove it from our code. But we guess it would still work if we use it in a different way.
+
+    8.2 Improve reranker using uneven margin
+By dropping top part and bottom part of the nbest sentences, we could make the method for calculating weights more stable. In this way, maybe it would be better for avoid overfitting.
+
+    8.3 Improve decoder using ..
+The decoder can be improved with larger beam-width and more complex local search. Since they would cost a lot of time (Maybe more than 30 hours). So we did not use them in the project. If we have more time for it, we can run some larger scales of data and they could receive better results.
+
