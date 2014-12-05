@@ -141,8 +141,8 @@ for i in range(opts.iter):
         best_bleu_score = new_bleu_score
         w = new_w
     else:
-        pass
-        # break
+        # pass
+        break
 
 
 print "best score: " + str(best_bleu_score)
