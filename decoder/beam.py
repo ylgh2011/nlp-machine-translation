@@ -112,7 +112,7 @@ def main(opts, w, tm, lm, french, ibm_t):
             return (lst, features)
         def cmpKey(h):
             (lst, features) = get_list_and_features(h)
-            return -1 * sum( [float(features[i]) * w[i] for i in range(features)] )
+            return -1 * sum( [float(features[i]) * w[i] for i in range(len(features))] )
 
         winners = sorted(heaps[-1].itervalues(), key=lambda h: cmpKey(h))[0:opts.nbest]
 
