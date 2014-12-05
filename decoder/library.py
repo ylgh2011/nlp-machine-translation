@@ -41,7 +41,7 @@ def init(tFileName):
 
 
 init_prob = 1.0 / 30.0
-init_prob = 1
+# init_prob = 1
 
 def t_f_given_e(t, fw, ew):
     if (fw, ew) in t:
