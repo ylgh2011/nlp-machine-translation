@@ -126,7 +126,7 @@ def main(w0 = None):
                                     if (lm_state, coverage, k) not in heaps[num] or new_hypothesis.logprob > heaps[num][lm_state, coverage, k].logprob:
                                         heaps[num][lm_state, coverage, k] = new_hypothesis
 
-        winners = sorted(heaps[-1].itervalues(), key=lambda h: h.logprob)[0:opts.nbest]
+        winners = sorted(heaps[-1].itervalues(), key=lambda h: -h.logprob)[0:opts.nbest]
 
         def get_lm_logprob(test_list):
             stance = []

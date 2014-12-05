@@ -41,23 +41,32 @@ def init(tFileName):
 
 
 init_prob = 1.0 / 30.0
+init_prob = 1
+
 def t_f_given_e(t, fw, ew):
     if (fw, ew) in t:
         return t[fw, ew]
     else:
         return init_prob
+
+
 def q_j_given_i_l_m(q, j, i, l, m):
     if (j, i, l, m) in q:
         return q[j, i, l, m]
     else:
         return init_prob
 
+
 epsi = 1.0
+
+
 def ibm_model_1_w_score(t, f, ew):
     score = 0
     for fw in f:
         score += log(t_f_given_e(t, fw, ew))
     return score
+
+
 def ibm_model_1_score(t, f, e):
     l = float(len(e))
     m = float(len(f))

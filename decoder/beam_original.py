@@ -84,7 +84,7 @@ def main(opts, w, tm, lm, french, ibm_t):
                                         heaps[num][lm_state, coverage, k] = new_hypothesis
 
 
-        winners = sorted(heaps[-1].itervalues(), key=lambda h: h.logprob)[0:opts.nbest]
+        winners = sorted(heaps[-1].itervalues(), key=lambda h: -h.logprob)[0:opts.nbest]
 
         def get_lm_logprob(test_list):
             stance = []

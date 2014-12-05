@@ -62,16 +62,21 @@ def main(opts, references, input_nbest, theta0=None):
             (i, sentence, features) = line.strip().split("|||")
             i = int(i)
 
-            lst_smoothed_bleu_score = []
-            for ref in references:
-                stats = list(bleu.bleu_stats(sentence, ref[i]))
-                lst_smoothed_bleu_score.append( bleu.smoothed_bleu(stats) )
-            # making the feature string to float list
-            avg_smoothed_bleu_score = float(sum(lst_smoothed_bleu_score)) / len(lst_smoothed_bleu_score)
+            # lst_smoothed_bleu_score = []
+            # for ref in references:
+            #     stats = list(bleu.bleu_stats(sentence, ref[i]))
+            #     lst_smoothed_bleu_score.append( bleu.smoothed_bleu(stats) )
+            # # making the feature string to float list
+            # avg_smoothed_bleu_score = float(sum(lst_smoothed_bleu_score)) / len(lst_smoothed_bleu_score)
+
+            stats = list(bleu.bleu_stats(sentence, references[i]))
+            smoothed_bleu_score = bleu.smoothed_bleu(stats)
+            
             feature_list = [float(x) for x in features.split()]
             if len(nbests)<=i:
                 nbests.append([])
-            nbests[i].append(entry(sentence, avg_smoothed_bleu_score, feature_list))
+            # nbests[i].append(entry(sentence, avg_smoothed_bleu_score, feature_list))
+            nbests[i].append(entry(sentence, smoothed_bleu_score, feature_list))
 
             if j%5000 == 0:
                 sys.stderr.write(".")

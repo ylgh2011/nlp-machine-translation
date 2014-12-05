@@ -45,9 +45,9 @@ optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nl
 # optparser.add_option("--language-model", dest="lm", default="/usr/shared/CMPT/nlp-class/project/lm/en.tiny.3g.arpa", help="File containing ARPA-format language model (default=data/lm)")
 optparser.add_option("--diseta", dest="diseta", type="float", default=0.1, help="perceptron learning rate (default 0.1)")
 optparser.add_option("--num_sentences", dest="num_sents", default=sys.maxint, type="int", help="Number of sentences to decode (default=no limit)")
-optparser.add_option("--translations-per-phrase", dest="k", default=20, type="int", help="Limit on number of translations to consider per phrase (default=1)")
-optparser.add_option("--heap-size", dest="s", default=1000, type="int", help="Maximum heap size (default=1)")
-optparser.add_option("--disorder", dest="disord", default=5, type="int", help="Disorder limit (default=6)")
+optparser.add_option("--translations-per-phrase", dest="k", default=25, type="int", help="Limit on number of translations to consider per phrase (default=1)")
+optparser.add_option("--heap-size", dest="s", default=2000, type="int", help="Maximum heap size (default=1)")
+optparser.add_option("--disorder", dest="disord", default=12, type="int", help="Disorder limit (default=6)")
 optparser.add_option("--beam width", dest="bwidth", default=1,  help="beamwidth")
 optparser.add_option("--mute", dest="mute", default=0, type="int", help="mute the output")
 optparser.add_option("--nbest", dest="nbest", default=1, type="int", help="print out nbest results")
@@ -65,7 +65,7 @@ def main(w0 = None):
     if w is None:
         # lm_logprob, distortion penenalty, direct translate logprob, direct lexicon logprob, inverse translation logprob, inverse lexicon logprob
         if opts.weights == "no weights specify":
-            w = [1.0, -1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+            w = [1.0/6] * 6
         else:
             w = [float(line.strip()) for line in open(opts.weights)]
     sys.stderr.write(str(w) + '\n')
@@ -116,7 +116,7 @@ def main(w0 = None):
                                     logprob  = h.logprob
                                     logprob += lm_prob*w[0]
                                     logprob += getDotProduct(phrase.several_logprob, w[2:6])
-                                    logprob += opts.diseta*abs(h.end+1-j)*w[1]
+                                    # logprob += opts.diseta*abs(h.end+1-j)*w[1]
                                     logprob += ibm_model_1_w_score(ibm_t, f, phrase.english)*w[6]
 
                                     new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase, abs(h.end + 1 - j))
@@ -126,14 +126,14 @@ def main(w0 = None):
                                     if (lm_state, coverage, k) not in heaps[num] or new_hypothesis.logprob > heaps[num][lm_state, coverage, k].logprob:
                                         heaps[num][lm_state, coverage, k] = new_hypothesis
 
-        winners = sorted(heaps[-1].itervalues(), key=lambda h: h.logprob)[0:opts.nbest]
+        winners = sorted(heaps[-1].itervalues(), key=lambda h: -h.logprob)[0:opts.nbest]
 
         def get_lm_logprob(test_list):
             stance = []
             for i in test_list:
                 stance += (i.split())
             stance = tuple(stance)
-            lm_state = (stance[0],)
+            lm_state = ("<s>",)
             score = 0.0
             for word in stance:
                 (lm_state, word_score) = lm.score(lm_state, word)
@@ -146,22 +146,22 @@ def main(w0 = None):
             while current_h.phrase is not None:
                 # print current_h
                 lst.append(current_h.phrase.english);
-                features[1] += current_h.distortionPenalty
-                features[2] += current_h.phrase.several_logprob[0]
-                features[3] += current_h.phrase.several_logprob[1]
-                features[4] += current_h.phrase.several_logprob[2]
-                features[5] += current_h.phrase.several_logprob[3]
+                # features[1] += current_h.distortionPenalty
+                features[1] += current_h.phrase.several_logprob[0]
+                features[2] += current_h.phrase.several_logprob[1]
+                features[3] += current_h.phrase.several_logprob[2]
+                features[4] += current_h.phrase.several_logprob[3]
                 current_h = current_h.predecessor
             lst.reverse()
             features[0] = get_lm_logprob(lst)
-            features[6] = ibm_model_1_score(ibm_t, f, lst)
+            features[5] = ibm_model_1_score(ibm_t, f, lst)
             return (lst, features)
 
         for win in winners:
             # s = str(idx) + " ||| "
             (lst, features) = get_list_and_features(win)
-            # print local_search.local_search(lst, lm)
-            print " ".join(lst)
+            print local_search.local_search(lst, lm)
+            # print " ".join(lst)
             # for word in lst:
                 # s += word + ' '
             # s += '||| '

@@ -66,14 +66,18 @@ opts = optparser.parse_args()[0]
 
 ########################################################################################################################################
 ## init for decoder part
-tm = models.TM(opts.tm, opts.k, opts.mute)
 lm = models.LM(opts.lm, opts.mute)
+tm = models.TM(opts.tm, opts.k, opts.mute)
+
+
 french = [tuple(line.strip().split()) for line in open(opts.input).readlines()[:opts.num_sents]]
 bound_width = float(opts.bwidth)
 
 for word in set(sum(french,())):
     if (word,) not in tm:
         tm[(word,)] = [models.phrase(word, [0.0, 0.0, 0.0, 0.0])]
+
+
 
 # ibm_t = {}
 ibm_t = library.init('./data/ibm.t.gz')
@@ -99,11 +103,12 @@ references[1] = readReference(opts.en1)
 references[2] = readReference(opts.en2)
 references[3] = readReference(opts.en3)
 
+
 ########################################################################################################################################
 ## start doing iteration between decoder and reranker
 # w = [1.0, -0.01, 1.0, 1.0, 1.0, 1.0, 1.0]
 # w = [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
-w = [0.17, 0.17, 0.17, 0.17, 0.17, 0.17]
+w = [1.0/6] * 6
 nbest_sentences_0 = beam.main(opts, w, tm, lm, french, ibm_t)
 (score_list, translation_list) = rerank.main(w, nbest_sentences_0)
 best_bleu_score = score_reranker_avg.main(opts, translation_list)
@@ -113,14 +118,11 @@ for i in range(opts.iter):
     sys.stderr.write("Iteration %d\n" % i)
     # beam decode and output nbest file
     nbest_sentences = beam.main(opts, w, tm, lm, french, ibm_t)
-
     # calculate weight and output the result weight
-    new_w_str = cal_weight.main(opts, references, nbest_sentences, w)
+    new_w_str = cal_weight.main(opts, references[0], nbest_sentences, w)
     new_w = [float(item) for item in new_w_str.split('\n')]
-
     # rerank using the output weight 
     (score_list, translation_list) = rerank.main(new_w, nbest_sentences)
-    
     # calculate the BLEU score for the test set
     new_bleu_score = score_reranker_avg.main(opts, translation_list)
     sys.stderr.write("new_w = " + str(new_w) + ", new_bleu_score = " + str(new_bleu_score) + '\n')
@@ -129,8 +131,6 @@ for i in range(opts.iter):
         w = new_w
     else:
         break
-
-
 
 
 
@@ -155,3 +155,6 @@ reload(models)
 reload(library)
 reload(rerank)
 reload(score_reranker_avg)
+
+
+
