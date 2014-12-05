@@ -119,7 +119,7 @@ reload(rerank)
 reload(score_reranker_avg)
 
 
-w = [1.0/6] * 6
+w = [1.0/7] * 7
 nbest_sentences_0 = beam.main(opts, w, tm, lm, french, ibm_t)
 (score_list, translation_list) = rerank.main(w, nbest_sentences_0)
 best_bleu_score = score_reranker_avg.main(opts, translation_list)

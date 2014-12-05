@@ -75,6 +75,7 @@ def main(opts, w, tm, lm, french, ibm_t):
                                     logprob += getDotProduct(phrase.several_logprob, w[1:5])
                                     # logprob += opts.diseta*abs(h.end+1-j)*w[1]
                                     logprob += ibm_model_1_w_score(ibm_t, f, phrase.english)*w[5]
+                                    logprob += (len(phrase.english.split()) - (k - j)) * w[6]
 
                                     new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase, abs(h.end + 1 - j))
 
@@ -94,10 +95,9 @@ def main(opts, w, tm, lm, french, ibm_t):
                 (lm_state, word_score) = lm.score(lm_state, word)
                 score += word_score
             return score
-        def get_list_and_features(h):
+        def get_list_and_features(h, idx):
             lst = [];
-            # features = [0, 0, 0, 0, 0, 0, 0]
-            features = [0, 0, 0, 0, 0, 0]
+            features = [0, 0, 0, 0, 0, 0, 0]
             current_h = h;
             while current_h.phrase is not None:
                 # print current_h
@@ -111,6 +111,7 @@ def main(opts, w, tm, lm, french, ibm_t):
             lst.reverse()
             features[0] = get_lm_logprob(lst)                           # language model score
             features[5] = ibm_model_1_score(ibm_t, f, lst)
+            features[6] = len(lst) - len(french[idx])
             return (lst, features)
         def cmpKey(h):
             (lst, features) = get_list_and_features(h)
@@ -122,7 +123,7 @@ def main(opts, w, tm, lm, french, ibm_t):
 
         for win in winners:
             s = str(idx) + " ||| "
-            (lst, features) = get_list_and_features(win)
+            (lst, features) = get_list_and_features(win, idx)
             for word in lst:
                 s += word + ' '
             s += '||| '
