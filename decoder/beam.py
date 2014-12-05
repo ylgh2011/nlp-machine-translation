@@ -42,17 +42,19 @@ def main(opts, w, tm, lm, french, ibm_t):
     if opts.mute == 0:
         sys.stderr.write("Start decoding %s ...\n" % (opts.input,))
     for idx,f in enumerate(french):
-        if opts.mute == 0 and idx % 100 == 0:
+        if opts.mute == 0 and idx % 10 == 0:
             sys.stderr.write(".")
         initial_hypothesis = hypothesis(lm.begin(), 0.0, 0, 0, None, None, None)
         heaps = [{} for _ in f] + [{}]
         heaps[0][lm.begin(), 0, 0] = initial_hypothesis
         for i, heap in enumerate(heaps[:-1]):
             # maintain beam heap
-            front_item = sorted(heap.itervalues(), key=lambda h: -h.logprob)[0]
+            sortedHeap = sorted(heap.itervalues(), key=lambda h: -h.logprob)
+            # front_item = sortedHeap[0]
 
-            for h in sorted(heap.itervalues(),key=lambda h: -h.logprob)[:opts.s]: # prune
-                if h.logprob < front_item.logprob - float(opts.bwidth): continue
+            for h in sortedHeap[:opts.s]: # prune
+                # if h.logprob < front_item.logprob - float(opts.bwidth):
+                #     continue
 
                 fopen = prefix1bits(h.coverage)
                 for j in xrange(fopen,min(fopen+1+opts.disord, len(f)+1)):

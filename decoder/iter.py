@@ -37,7 +37,7 @@ optparser.add_option("-k", "--translations-per-phrase", dest="k", default=10, ty
 optparser.add_option("--heap-size", dest="s", default=100, type="int", help="Maximum heap size (default=1)")
 optparser.add_option("--disorder", dest="disord", default=3, type="int", help="Disorder limit (default=3)")
 optparser.add_option("--diseta", dest="diseta", type="float", default=0.1, help="perceptron learning rate (default 0.1)")
-optparser.add_option("--beam width", dest="bwidth", default=0.5,  help="beamwidth")
+optparser.add_option("--beam width", dest="bwidth", default=600,  help="beamwidth")
 optparser.add_option("--mute", dest="mute", default=0, type="int", help="mute the output")
 optparser.add_option("--nbest", dest="nbest", default=100, type="int", help="print out nbest results")
 
@@ -141,10 +141,11 @@ for i in range(opts.iter):
         best_bleu_score = new_bleu_score
         w = new_w
     else:
-        break
+        pass
+        # break
 
 
-
+print "best score: " + str(best_bleu_score)
 for item in w:
     print item
 
