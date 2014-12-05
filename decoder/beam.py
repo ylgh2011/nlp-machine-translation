@@ -69,10 +69,10 @@ def main(opts, w, tm, lm, french, ibm_t):
                                     coverage = h.coverage | bitmap(range(j, k))
                                     # logprob = h.logprob + lm_prob*w[0] + getDotProduct(phrase.several_logprob, w[2:6]) + abs(h.end+1-j)*w[1] + ibm_model_1_w_score(ibm_t, f, phrase.english)*w[6]
                                     logprob  = h.logprob
-                                    logprob += lm_prob * w[0]
+                                    logprob += lm_prob*w[0]
                                     logprob += getDotProduct(phrase.several_logprob, w[1:5])
                                     # logprob += opts.diseta*abs(h.end+1-j)*w[1]
-                                    # logprob += ibm_model_1_w_score(ibm_t, f, phrase.english)*w[5]
+                                    logprob += ibm_model_1_w_score(ibm_t, f, phrase.english)*w[5]
 
                                     new_hypothesis = hypothesis(lm_state, logprob, coverage, k, h, phrase, abs(h.end + 1 - j))
 
@@ -114,7 +114,8 @@ def main(opts, w, tm, lm, french, ibm_t):
             (lst, features) = get_list_and_features(h)
             return -1 * sum( [float(features[i]) * w[i] for i in range(len(features))] )
 
-        winners = sorted(heaps[-1].itervalues(), key=lambda h: cmpKey(h))[0:opts.nbest]
+        # winners = sorted(heaps[-1].itervalues(), key=lambda h: cmpKey(h))[0:opts.nbest]
+        winners = sorted(heaps[-1].itervalues(), key=lambda h: -h.logprob)[0:opts.nbest]
 
 
         for win in winners:

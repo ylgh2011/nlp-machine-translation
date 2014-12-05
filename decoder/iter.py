@@ -108,6 +108,17 @@ references[3] = readReference(opts.en3)
 ## start doing iteration between decoder and reranker
 # w = [1.0, -0.01, 1.0, 1.0, 1.0, 1.0, 1.0]
 # w = [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
+
+
+
+reload(beam)
+reload(cal_weight)
+reload(models)
+reload(library)
+reload(rerank)
+reload(score_reranker_avg)
+
+
 w = [1.0/6] * 6
 nbest_sentences_0 = beam.main(opts, w, tm, lm, french, ibm_t)
 (score_list, translation_list) = rerank.main(w, nbest_sentences_0)
@@ -134,9 +145,12 @@ for i in range(opts.iter):
 
 
 
-
 for item in w:
     print item
+
+
+
+
 
 
 # (score_list, translation_list) = rerank.main(w, nbest_sentences)
